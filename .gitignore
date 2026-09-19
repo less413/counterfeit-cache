@@ -1,0 +1,12 @@
+# the executable
+CC-Simulate
+
+# benchmarks
+*.data
+*.zip
+
+# other stuff
+*.out
+*.err
+*.swp
+tmp/
