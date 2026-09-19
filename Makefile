@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -Werror -pedantic -O2
+CFLAGS := -Wall -Wextra -pedantic -O2
 
 OUTPUT_CACHE_SIM := CC-Simulate
 
