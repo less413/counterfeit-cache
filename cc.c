@@ -59,6 +59,8 @@ int main(int ac, char** av) {
         }
     }
 
+    free(filename);
+
     // initialize cache
     // TODO extend to 4 cores
     Cache* cache = cache_create(cache_size, associativity, block_size);
@@ -102,5 +104,11 @@ int main(int ac, char** av) {
     printf("%ld\n", data_traffic);
     // 7. bus invalidations/updates
     // 8. cache private:shared hits per core "p:s p:s p:s p:s"
+
+    // close file/s
+    for (int i = 0; i < NUM_CORES; ++i) {
+        fclose(fds[i]);
+    }
+    cache_free(cache);
 }
 
