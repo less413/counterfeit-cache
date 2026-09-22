@@ -17,6 +17,7 @@ typedef struct {
     uint* ts_used;
 
     // stats
+    ulong idle_cycles;
     ulong p_hits;
     ulong s_hits;
     ulong misses;
@@ -25,6 +26,6 @@ typedef struct {
 Cache* cache_create(uint cache_size, uint assoc, uint block_size);
 void cache_free(Cache* c);
 
-ulong cache_pr_rd (Cache* c, uint addr);
-ulong cache_pr_wr (Cache* c, uint addr);
+void cache_pr_rd (Cache* c, uint addr);
+void cache_pr_wr (Cache* c, uint addr);
 

@@ -64,7 +64,6 @@ int main(int ac, char** av) {
     Cache* cache = cache_create(cache_size, associativity, block_size);
 
     // initialize statistics
-    ulong total_cycles = 0;
     ulong comp_cycles = 0;
     ulong mem_instrs = 0;
 
@@ -75,7 +74,6 @@ int main(int ac, char** av) {
     while (fscanf(fds[0], "%u %x", &inst, &addr) == 2) {
         if (inst == 2) {
             // computation instr
-            total_cycles += addr;
             comp_cycles += addr;
             continue;
         }
@@ -83,21 +81,21 @@ int main(int ac, char** av) {
         // either load (0) or store (1)
         ++mem_instrs;
         if (inst == 0) {
-            total_cycles += cache_pr_rd(cache, addr);
+            cache_pr_rd(cache, addr);
         } else {
-            total_cycles += cache_pr_wr(cache, addr);
+            cache_pr_wr(cache, addr);
         }
     }
 
     // print results
     // 1. total execution cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", total_cycles);
+    printf("%ld\n", comp_cycles + cache->idle_cycles);
     // 2. compute cycles per core "aaa bbb ccc ddd"
     printf("%ld\n", comp_cycles);
     // 3. load/store instrs per core "aaa bbb ccc ddd"
     printf("%ld\n", mem_instrs);
     // 4. idle cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", total_cycles - comp_cycles); // idle cycles
+    printf("%ld\n", cache->idle_cycles); // idle cycles
     // 5. cache hit:miss per core "h:m h:m h:m h:m"
     printf("%ld:%ld\n", cache->p_hits, cache->misses);
     // 6. bus data traffic "bytes"

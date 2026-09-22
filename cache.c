@@ -56,7 +56,7 @@ void cache_free(Cache* c) {
 
 // instruction 0 (read)
 // returns no. of cycles taken
-ulong cache_pr_rd (Cache* c, uint addr) {
+void cache_pr_rd (Cache* c, uint addr) {
     ulong cycles = 0;
 
     int has_match = 0;
@@ -117,12 +117,12 @@ ulong cache_pr_rd (Cache* c, uint addr) {
     c->ts_used[arr_i] = c->t_next;
     ++c->t_next;
 
-    return cycles;
+    c->idle_cycles += cycles;
 }
 
 // instruction 1 (write)
 // returns no. of cycles taken
-ulong cache_pr_wr (Cache* c, uint addr) {
+void cache_pr_wr (Cache* c, uint addr) {
     ulong cycles = 0;
 
     int has_match = 0;
@@ -185,6 +185,6 @@ ulong cache_pr_wr (Cache* c, uint addr) {
     c->ts_used[arr_i] = c->t_next;
     ++c->t_next;
 
-    return cycles;
+    c->idle_cycles += cycles;
 }
 
