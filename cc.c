@@ -4,6 +4,7 @@
 #include <limits.h>
 
 #define NUM_CORES 1
+#define WORD_SIZE 4
 
 int main(int ac, char** av) {
     if (ac < 3 || ac > 6) {
@@ -30,6 +31,12 @@ int main(int ac, char** av) {
         block_size = atoi(av[5]);
     }
 
+    // validate inputs
+    if (block_size < WORD_SIZE) {
+        fprintf(stderr, "\nERROR: block_size (%uB) cannot be smaller than a word (%uB)\n\n", block_size, WORD_SIZE);
+        return -1;
+    }
+
     fprintf(stderr, "\n");
     fprintf(stderr, "protocol: %s\n", protocol);
     fprintf(stderr, "input_file: %s\n", input_file);
@@ -44,7 +51,8 @@ int main(int ac, char** av) {
     uint idx_bits = 31 - __builtin_clz(num_sets);
     uint off_bits = 31 - __builtin_clz(block_size);
     uint idx_off_bits = 31 - __builtin_clz(col_size); // = idx_bits + off_bits
-    uint idx_ones = 0xFFFFFFFF >> (32 - idx_bits);
+    uint idx_ones = idx_bits ? 0xFFFFFFFF >> (32 - idx_bits) : 0; // ternary op. to handle idx_bits == 0
+                                                                  // because >> by 32 is undefined
 
     fprintf(stderr, "idx_bits: %d\n", idx_bits);
     fprintf(stderr, "off_bits: %d\n", off_bits);
