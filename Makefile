@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -pedantic -O2
+CFLAGS := -g -Wall -Wextra -pedantic -O2
 
 SRCS := cc.c cache.c
 
@@ -13,9 +13,6 @@ $(OUTPUT): $(SRCS)
 
 $(DEBUG): $(SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ -DDEBUG
-
-old: ccc.c 
-	$(CC) $(CFLAGS) -o old $^
 
 clean:
 	rm -f $(OUTPUT) $(DEBUG)
