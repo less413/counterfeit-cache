@@ -1,12 +1,21 @@
 CC := gcc
 CFLAGS := -Wall -Wextra -pedantic -O2
 
-OUTPUT_CACHE_SIM := CC-Simulate
+SRCS := cc.c cache.c
 
-all: $(OUTPUT_CACHE_SIM)
+OUTPUT := CC-Simulate
+DEBUG := DCC-Simulate
 
-$(OUTPUT_CACHE_SIM): cc.c
+all: $(OUTPUT) $(DEBUG)
+
+$(OUTPUT): $(SRCS)
 	$(CC) $(CFLAGS) -o $@ $^
 
+$(DEBUG): $(SRCS)
+	$(CC) $(CFLAGS) -o $@ $^ -DDEBUG
+
+old: ccc.c 
+	$(CC) $(CFLAGS) -o old $^
+
 clean:
-	rm -f $(OUTPUT_CACHE_SIM)
+	rm -f $(OUTPUT) $(DEBUG)
