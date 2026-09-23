@@ -1,4 +1,7 @@
-typedef struct {
+struct Bus;
+
+// CACHE
+typedef struct Cache {
     // cache info
     uint num_sets;
     uint assoc;
@@ -17,15 +20,34 @@ typedef struct {
     uint* ts_used;
 
     // stats
-    ulong idle_cycles;
+    ulong total_cycles;
+    ulong comp_cycles;
     ulong p_hits;
     ulong s_hits;
     ulong misses;
 } Cache;
 
+typedef struct Bus {
+    // bus info (none for now)
+    // may store refs to all 4 Caches in future
+
+    // bus stats
+    ulong data_traffic;
+    ulong invalidations;
+} Bus;
+
+
 Cache* cache_create(uint cache_size, uint assoc, uint block_size);
 void cache_free(Cache* c);
 
-void cache_pr_rd (Cache* c, uint addr);
-void cache_pr_wr (Cache* c, uint addr);
+Bus* bus_create();
+void bus_free(Bus* b);
+
+void comp(Cache* c, uint cycles);
+void cache_pr_rd(Cache* c, Bus* b, uint addr);
+void cache_pr_wr(Cache* c, Bus* b, uint addr);
+
+
+void bus_flush_mem(Cache* c, Bus* b);
+void bus_rd(Cache* c, Bus* b);
 

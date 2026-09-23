@@ -2,10 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include "cc.h"
 #include "cache.h"
-
-#define NUM_CORES 1
-#define WORD_SIZE 4
 
 int main(int ac, char** av) {
     if (ac < 3 || ac > 6) {
@@ -52,7 +50,7 @@ int main(int ac, char** av) {
     FILE* fds[NUM_CORES];
     for (int i = 0; i < NUM_CORES; ++i) {
         sprintf(filename, "%s_%d.data", input_file, i);
-        fds[i] = fopen(filename, "r"); // TODO read actual input file
+        fds[i] = fopen(filename, "r");
         if (fds[i] == NULL) {
             fprintf(stderr, "ERROR: file %s is missing", filename);
             return -1;
@@ -61,54 +59,57 @@ int main(int ac, char** av) {
 
     free(filename);
 
+    // initialize statistics
+    ulong mem_instrs = 0;
+
+    // ** SINGLE CORE **
     // initialize cache
     // TODO extend to 4 cores
     Cache* cache = cache_create(cache_size, associativity, block_size);
 
-    // initialize statistics
-    ulong comp_cycles = 0;
-    ulong mem_instrs = 0;
-
-    ulong data_traffic = 0;
+    // initialize bus
+    Bus* bus = bus_create();
 
     // read file
     uint inst, addr;
+    // TODO extend to 4 cores
     while (fscanf(fds[0], "%u %x", &inst, &addr) == 2) {
         if (inst == 2) {
             // computation instr
-            comp_cycles += addr;
+            comp(cache, addr);
             continue;
         }
 
         // either load (0) or store (1)
         ++mem_instrs;
         if (inst == 0) {
-            cache_pr_rd(cache, addr);
+            cache_pr_rd(cache, bus, addr);
         } else {
-            cache_pr_wr(cache, addr);
+            cache_pr_wr(cache, bus, addr);
         }
     }
 
     // print results
     // 1. total execution cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", comp_cycles + cache->idle_cycles);
+    printf("%ld\n", cache->total_cycles);
     // 2. compute cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", comp_cycles);
+    printf("%ld\n", cache->comp_cycles);
     // 3. load/store instrs per core "aaa bbb ccc ddd"
     printf("%ld\n", mem_instrs);
     // 4. idle cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", cache->idle_cycles); // idle cycles
+    printf("%ld\n", cache->total_cycles - cache->comp_cycles); // idle cycles
     // 5. cache hit:miss per core "h:m h:m h:m h:m"
     printf("%ld:%ld\n", cache->p_hits, cache->misses);
     // 6. bus data traffic "bytes"
-    printf("%ld\n", data_traffic);
+    printf("%ld\n", bus->data_traffic);
     // 7. bus invalidations/updates
     // 8. cache private:shared hits per core "p:s p:s p:s p:s"
 
-    // close file/s
+    // free resources
     for (int i = 0; i < NUM_CORES; ++i) {
         fclose(fds[i]);
     }
+    bus_free(bus);
     cache_free(cache);
 }
 

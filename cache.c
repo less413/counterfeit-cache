@@ -2,14 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include "cc.h"
 #include "cache.h"
 
-#ifdef DEBUG
-    #define LOG(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
-#else
-    #define LOG(fmt, ...)
-#endif
-
+// CACHE FUNCTIONS
 Cache* cache_create(uint cache_size, uint assoc, uint block_size) {
     Cache* c = malloc(sizeof(Cache));
 
@@ -37,10 +33,15 @@ Cache* cache_create(uint cache_size, uint assoc, uint block_size) {
     c->states = malloc(total_entries * sizeof(uint));
     c->ts_used = malloc(total_entries * sizeof(uint));
 
-    // initialize
     c->t_next = 1;
     memset(c->states, 0, total_entries * sizeof(uint));
     memset(c->ts_used, 0, total_entries * sizeof(uint));
+
+    c->total_cycles = 0;
+    c->comp_cycles = 0;
+    c->p_hits = 0;
+    c->s_hits = 0;
+    c->misses = 0;
 
     return c;
 }
@@ -54,9 +55,14 @@ void cache_free(Cache* c) {
     free(c);
 }
 
+// instruction 2 (compute)
+void comp(Cache* c, uint cycles) {
+    c->total_cycles += cycles;
+    c->comp_cycles += cycles;
+}
+
 // instruction 0 (read)
-// returns no. of cycles taken
-void cache_pr_rd (Cache* c, uint addr) {
+void cache_pr_rd (Cache* c, Bus* b, uint addr) {
     ulong cycles = 0;
 
     int has_match = 0;
@@ -67,7 +73,7 @@ void cache_pr_rd (Cache* c, uint addr) {
     LOG("tag: %x\n", tag);
     LOG("idx: %x\n", idx);
 
-    uint way; // way to be updated
+    uint way = 0; // way to be updated
     uint lru_t = UINT_MAX;
 
     // 1. check set for match
@@ -79,7 +85,8 @@ void cache_pr_rd (Cache* c, uint addr) {
             LOG("wow cache hit\n");
             has_match = 1;
             way = j;
-            c->p_hits += 1;
+            c->total_cycles += HIT_CYCLES;
+            ++c->p_hits; // all hits here are private
             break;
         }
 
@@ -100,15 +107,13 @@ void cache_pr_rd (Cache* c, uint addr) {
         // if block is dirty
         if (c->states[arr_i] == 3) {
             // FLUSH to mem
-            cycles += 100;
-            // TODO bus traffic += block size
+            bus_flush_mem(c, b);
         }
 
         // LOAD new block
+        bus_rd(c, b);
         c->tags[arr_i] = tag;
         c->states[arr_i] = 2;
-        cycles += 100;
-        // TODO bus traffic += block size
     }
 
     LOG("way: %d\n\n", way);
@@ -117,12 +122,11 @@ void cache_pr_rd (Cache* c, uint addr) {
     c->ts_used[arr_i] = c->t_next;
     ++c->t_next;
 
-    c->idle_cycles += cycles;
+    c->total_cycles += cycles;
 }
 
 // instruction 1 (write)
-// returns no. of cycles taken
-void cache_pr_wr (Cache* c, uint addr) {
+void cache_pr_wr (Cache* c, Bus* b, uint addr) {
     ulong cycles = 0;
 
     int has_match = 0;
@@ -133,7 +137,7 @@ void cache_pr_wr (Cache* c, uint addr) {
     LOG("tag: %x\n", tag);
     LOG("idx: %x\n", idx);
 
-    uint way; // way to be updated
+    uint way = 0; // way to be updated
     uint lru_t = UINT_MAX;
 
     // 1. check set for match
@@ -166,14 +170,12 @@ void cache_pr_wr (Cache* c, uint addr) {
         // if block is dirty
         if (c->states[arr_i] == 3) {
             // FLUSH to mem
-            cycles += 100;
-            // TODO bus traffic += block size
+            bus_flush_mem(c, b);
         }
 
         // LOAD new block
+        bus_rd(c, b);
         c->tags[arr_i] = tag;
-        cycles += 100;
-        // TODO bus traffic += block size
     }
 
     LOG("way: %d\n\n", way);
@@ -185,6 +187,35 @@ void cache_pr_wr (Cache* c, uint addr) {
     c->ts_used[arr_i] = c->t_next;
     ++c->t_next;
 
-    c->idle_cycles += cycles;
+    c->total_cycles += cycles;
+}
+
+
+
+// BUS FUNCTIONS
+Bus* bus_create() {
+    Bus* b = malloc(sizeof(Bus));
+    
+    // initialize
+    b->data_traffic = 0;
+    b->invalidations = 0;
+
+    return b;
+}
+
+void bus_free(Bus* b) {
+    if (!b) return;
+
+    free(b);
+}
+
+void bus_flush_mem(Cache* c, Bus* b) {
+    c->total_cycles += FLUSH_MEM_CYCLES;
+    b->data_traffic += c->block_size;
+}
+
+void bus_rd(Cache* c, Bus* b) {
+    c->total_cycles += LOAD_MEM_CYCLES;
+    b->data_traffic += c->block_size;
 }
 
