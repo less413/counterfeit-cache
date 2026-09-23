@@ -149,7 +149,8 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
             LOG("wow cache hit\n");
             has_match = 1;
             way = j;
-            c->p_hits += 1;
+            c->total_cycles += HIT_CYCLES;
+            ++c->p_hits; // all hits here are private
             break;
         }
 
