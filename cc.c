@@ -52,7 +52,7 @@ int main(int ac, char** av) {
         sprintf(filename, "%s_%d.data", input_file, i);
         fds[i] = fopen(filename, "r");
         if (fds[i] == NULL) {
-            fprintf(stderr, "ERROR: file %s is missing", filename);
+            fprintf(stderr, "ERROR: file %s is missing\n", filename);
             return -1;
         }
     }
@@ -91,17 +91,17 @@ int main(int ac, char** av) {
 
     // print results
     // 1. total execution cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", cache->total_cycles);
+    printf("%lu\n", cache->total_cycles);
     // 2. compute cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", cache->comp_cycles);
+    printf("%lu\n", cache->comp_cycles);
     // 3. load/store instrs per core "aaa bbb ccc ddd"
-    printf("%ld\n", mem_instrs);
+    printf("%lu\n", mem_instrs);
     // 4. idle cycles per core "aaa bbb ccc ddd"
-    printf("%ld\n", cache->total_cycles - cache->comp_cycles); // idle cycles
+    printf("%lu\n", cache->total_cycles - cache->comp_cycles); // idle cycles
     // 5. cache hit:miss per core "h:m h:m h:m h:m"
-    printf("%ld:%ld\n", cache->p_hits, cache->misses);
+    printf("%lu:%lu\n", cache->p_hits, cache->misses);
     // 6. bus data traffic "bytes"
-    printf("%ld\n", bus->data_traffic);
+    printf("%lu\n", bus->data_traffic);
     // 7. bus invalidations/updates
     // 8. cache private:shared hits per core "p:s p:s p:s p:s"
 

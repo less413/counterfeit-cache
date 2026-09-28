@@ -1,3 +1,6 @@
+#ifndef CC_H
+#define CC_H
+
 #define NUM_CORES 1
 #define WORD_SIZE 4
 
@@ -12,3 +15,4 @@
     #define LOG(fmt, ...)
 #endif
 
+#endif

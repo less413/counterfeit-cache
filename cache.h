@@ -1,3 +1,8 @@
+#ifndef CACHE_H
+#define CACHE_H
+
+#include <sys/types.h>
+
 struct Bus;
 
 // CACHE
@@ -51,3 +56,4 @@ void cache_pr_wr(Cache* c, Bus* b, uint addr);
 void bus_flush_mem(Cache* c, Bus* b);
 void bus_rd(Cache* c, Bus* b);
 
+#endif
