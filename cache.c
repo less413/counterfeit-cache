@@ -76,6 +76,8 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
     uint way = 0; // way to be updated
     uint lru_t = UINT_MAX;
 
+    c->total_cycles += ACCESS_CYCLES;
+
     // 1. check set for match
     for (uint j = 0; j < c->assoc; ++j) {
         uint arr_j = idx * c->assoc + j;
@@ -85,7 +87,6 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
             LOG("wow cache hit\n");
             has_match = 1;
             way = j;
-            c->total_cycles += HIT_CYCLES;
             ++c->p_hits; // all hits here are private
             break;
         }
@@ -140,6 +141,8 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
     uint way = 0; // way to be updated
     uint lru_t = UINT_MAX;
 
+    c->total_cycles += ACCESS_CYCLES;
+
     // 1. check set for match
     for (uint j = 0; j < c->assoc; ++j) {
         uint arr_j = idx * c->assoc + j;
@@ -149,7 +152,6 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
             LOG("wow cache hit\n");
             has_match = 1;
             way = j;
-            c->total_cycles += HIT_CYCLES;
             ++c->p_hits; // all hits here are private
             break;
         }
@@ -160,7 +162,7 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
             way = j;
         }
     }
-        
+
     uint arr_i = idx * c->assoc + way;
 
     // 2. (if no match) evict/load block
@@ -196,7 +198,7 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
 // BUS FUNCTIONS
 Bus* bus_create() {
     Bus* b = malloc(sizeof(Bus));
-    
+
     // initialize
     b->data_traffic = 0;
     b->invalidations = 0;
