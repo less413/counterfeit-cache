@@ -1,9 +1,49 @@
+#include <fcntl.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "cc.h"
 #include "cache.h"
+
+// custom parser that assumes each line contains "<0-2> 0x<32b hex>"
+static inline int read_line(const char** pp, const char* end, uint* inst, uint* addr) {
+    const char* file_pos = *pp;
+    if (file_pos >= end) {
+        return 0; // stop file parsing
+    }
+
+    *inst = (uint)(*file_pos++ - '0');
+
+    file_pos += 3; // skip the " 0x"
+
+    uint32_t x = 0;
+    // this parser assumes the hex number only contains 0-9 and a-f
+    while (file_pos < end) {
+        unsigned char c = (unsigned char)*file_pos;
+        if (c >= '0' && c <= '9') {
+            x = (x << 4) + (c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            x = (x << 4) + (c - 'a' + 10);
+        } else {
+            break;
+        }
+        ++file_pos;
+    }
+
+    *addr = x;
+
+    if (file_pos < end && *file_pos == '\n') {
+        ++file_pos;
+    }
+    *pp = file_pos;
+
+    return 1;
+}
 
 int main(int ac, char** av) {
     if (ac < 3 || ac > 6) {
@@ -24,7 +64,6 @@ int main(int ac, char** av) {
     if (ac >= 5) {
         associativity = atoi(av[4]);
     }
-
 
     if (ac >= 6) {
         block_size = atoi(av[5]);
@@ -47,14 +86,34 @@ int main(int ac, char** av) {
     char* filename = malloc(strlen(input_file) + 8); // <bench_name>_<i>.data'\0'
 
     // open file/s
-    FILE* fds[NUM_CORES];
+    int fds[NUM_CORES];
+    const char* file_pos[NUM_CORES];
+    const char* file_end[NUM_CORES]; // first address outside the file
+    size_t file_size[NUM_CORES];
+
     for (int i = 0; i < NUM_CORES; ++i) {
         sprintf(filename, "%s_%d.data", input_file, i);
-        fds[i] = fopen(filename, "r");
-        if (fds[i] == NULL) {
-            fprintf(stderr, "ERROR: file %s is missing\n", filename);
+        fds[i] = open(filename, O_RDONLY);
+        if (fds[i] == -1) {
+            fprintf(stderr, "ERROR opening file %s\n", filename);
             return -1;
         }
+        struct stat st;
+        if (fstat(fds[i], &st) != 0) {
+            fprintf(stderr, "ERROR getting file size %s\n", filename);
+            return -1;
+        }
+        file_size[i] = (size_t)st.st_size;
+        if (file_size[i] == 0) {
+            file_pos[i] = file_end[i] = NULL;
+            continue;
+        }
+        file_pos[i] = mmap(NULL, file_size[i], PROT_READ, MAP_PRIVATE, fds[i], 0);
+        if (file_pos[i] == MAP_FAILED) {
+            fprintf(stderr, "ERROR loading file %s\n", filename);
+            return -1;
+        }
+        file_end[i] = file_pos[i] + file_size[i];
     }
 
     free(filename);
@@ -73,7 +132,7 @@ int main(int ac, char** av) {
     // read file
     uint inst, addr;
     // TODO extend to 4 cores
-    while (fscanf(fds[0], "%u %x", &inst, &addr) == 2) {
+    while (read_line(&file_pos[0], file_end[0], &inst, &addr)) { // call custom line parser
         if (inst == 2) {
             // computation instr
             comp(cache, addr);
@@ -107,7 +166,7 @@ int main(int ac, char** av) {
 
     // free resources
     for (int i = 0; i < NUM_CORES; ++i) {
-        fclose(fds[i]);
+        close(fds[i]);
     }
     bus_free(bus);
     cache_free(cache);
