@@ -27,10 +27,13 @@ static inline int read_line(const char** pp, const char* end, uint* inst, uint* 
         unsigned char c = (unsigned char)*file_pos;
         if (c >= '0' && c <= '9') {
             x = (x << 4) + (c - '0');
-        } else if (c >= 'a' && c <= 'f') {
-            x = (x << 4) + (c - 'a' + 10);
         } else {
-            break;
+            c += 9;
+            if (c & 16) { // if c is '\n'
+                break;
+            }
+            // c is A-F or a-f
+            x = (x << 4) + (c & 15);
         }
         ++file_pos;
     }
