@@ -1,7 +1,7 @@
 #ifndef CC_H
 #define CC_H
 
-#define NUM_CORES 1
+#define NUM_CORES 4
 #define WORD_SIZE 4
 
 #define ACCESS_CYCLES 1

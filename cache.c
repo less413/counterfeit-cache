@@ -196,12 +196,15 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
 
 
 // BUS FUNCTIONS
-Bus* bus_create() {
+Bus* bus_create(Cache** caches) {
     Bus* b = malloc(sizeof(Bus));
 
     // initialize
     b->data_traffic = 0;
     b->invalidations = 0;
+    for (int i = 0; i < NUM_CORES; ++i) {
+        b->caches[i] = caches[i];
+    }
 
     return b;
 }

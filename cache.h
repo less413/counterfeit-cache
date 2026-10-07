@@ -33,8 +33,9 @@ typedef struct Cache {
 } Cache;
 
 typedef struct Bus {
-    // bus info (none for now)
-    // may store refs to all 4 Caches in future
+    // bus info
+    // store refs to all 4 Caches
+    Cache* caches[NUM_CORES];
 
     // bus stats
     ulong data_traffic;

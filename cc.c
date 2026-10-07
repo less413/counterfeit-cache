@@ -9,44 +9,7 @@
 #include <unistd.h>
 #include "cc.h"
 #include "cache.h"
-
-// custom parser that assumes each line contains "<0-2> 0x<32b hex>"
-static inline int read_line(const char** pp, const char* end, uint* inst, uint* addr) {
-    const char* file_pos = *pp;
-    if (file_pos >= end) {
-        return 0; // stop file parsing
-    }
-
-    *inst = (uint)(*file_pos++ - '0');
-
-    file_pos += 3; // skip the " 0x"
-
-    uint32_t x = 0;
-    // this parser assumes the hex number only contains 0-9 and a-f
-    while (file_pos < end) {
-        unsigned char c = (unsigned char)*file_pos;
-        if (c >= '0' && c <= '9') {
-            x = (x << 4) + (c - '0');
-        } else {
-            c += 9;
-            if (c & 16) { // if c is '\n'
-                break;
-            }
-            // c is A-F or a-f
-            x = (x << 4) + (c & 15);
-        }
-        ++file_pos;
-    }
-
-    *addr = x;
-
-    if (file_pos < end && *file_pos == '\n') {
-        ++file_pos;
-    }
-    *pp = file_pos;
-
-    return 1;
-}
+#include "parse.h"
 
 int main(int ac, char** av) {
     if (ac < 3 || ac > 6) {
@@ -124,13 +87,14 @@ int main(int ac, char** av) {
     // initialize statistics
     ulong mem_instrs = 0;
 
-    // ** SINGLE CORE **
     // initialize cache
-    // TODO extend to 4 cores
-    Cache* cache = cache_create(cache_size, associativity, block_size);
+    Cache* caches[NUM_CORES];
+    for (int i = 0; i < NUM_CORES; ++i) {
+        caches[i] = cache_create(cache_size, associativity, block_size);
+    }
 
     // initialize bus
-    Bus* bus = bus_create();
+    Bus* bus = bus_create(caches);
 
     // read file
     uint inst, addr;
@@ -138,30 +102,30 @@ int main(int ac, char** av) {
     while (read_line(&file_pos[0], file_end[0], &inst, &addr)) { // call custom line parser
         if (inst == 2) {
             // computation instr
-            comp(cache, addr);
+            comp(caches[0], addr);
             continue;
         }
 
         // either load (0) or store (1)
         ++mem_instrs;
         if (inst == 0) {
-            cache_pr_rd(cache, bus, addr);
+            cache_pr_rd(caches[0], bus, addr);
         } else {
-            cache_pr_wr(cache, bus, addr);
+            cache_pr_wr(caches[0], bus, addr);
         }
     }
 
     // print results
     // 1. total execution cycles per core "aaa bbb ccc ddd"
-    printf("%lu\n", cache->total_cycles);
+    printf("%lu\n", caches[0]->total_cycles);
     // 2. compute cycles per core "aaa bbb ccc ddd"
-    printf("%lu\n", cache->comp_cycles);
+    printf("%lu\n", caches[0]->comp_cycles);
     // 3. load/store instrs per core "aaa bbb ccc ddd"
     printf("%lu\n", mem_instrs);
     // 4. idle cycles per core "aaa bbb ccc ddd"
-    printf("%lu\n", cache->total_cycles - cache->comp_cycles); // idle cycles
+    printf("%lu\n", caches[0]->total_cycles - caches[0]->comp_cycles); // idle cycles
     // 5. cache hit:miss per core "h:m h:m h:m h:m"
-    printf("%lu:%lu\n", cache->p_hits, cache->misses);
+    printf("%lu:%lu\n", caches[0]->p_hits, caches[0]->misses);
     // 6. bus data traffic "bytes"
     printf("%lu\n", bus->data_traffic);
     // 7. bus invalidations/updates
@@ -172,6 +136,6 @@ int main(int ac, char** av) {
         close(fds[i]);
     }
     bus_free(bus);
-    cache_free(cache);
+    cache_free(caches[0]);
 }
 
