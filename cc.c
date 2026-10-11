@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "cc.h"
 #include "cache.h"
+#include "bus.h"
 #include "parse.h"
 
 int main(int ac, char** av) {

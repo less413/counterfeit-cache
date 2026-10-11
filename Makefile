@@ -1,8 +1,8 @@
 CC := gcc
 CFLAGS := -g -Wall -Wextra -pedantic -O2
 
-SRCS := cc.c cache.c
-HDRS := cc.h cache.h
+SRCS := cc.c cache.c bus.c
+HDRS := cc.h cache.h bus.h parse.h
 
 OUTPUT := CC-Simulate
 DEBUG := DCC-Simulate
