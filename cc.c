@@ -17,6 +17,8 @@ typedef struct {
     int valid;
     uint inst; // aka label
     uint val;
+    int waiting; // flag to indicate stalled waiting for the bus
+    ulong bus_req_time; // cycle it first request for the bus
 } Pending;
 
 static void print_row(const ulong* v) {
@@ -117,20 +119,38 @@ int main(int ac, char** av) {
     Pending next[NUM_CORES];
     for (int i = 0; i < NUM_CORES; i++) {
         next[i].valid = read_line(&file_pos[i], file_end[i], &next[i].inst, &next[i].val);
+        next[i].waiting = 0;
+        next[i].bus_req_time = 0;
     }
 
     // notes: issue_time just use cache[idx]->total_cycles;
     // no need to explicitly update issue_time, the functions does it
     while (1) {
-
         int idx = -1;
+        ulong best_total_cycles = 0;
+        ulong best_bus_req_time = 0;
         for (int i = 0; i < NUM_CORES; i++) {
             if (!next[i].valid) continue;
             
+            ulong t = caches[i]->total_cycles; // total cycles of candidate 
+            ulong r; // bus_req_time of candidate
+            if (next[i].waiting) {
+                // already stalled once, use the time it FIRST asked for the bus
+                r = next[i].bus_req_time;
+            } else {
+                // not stalled. if it needs the bus, it would be right after 1-cycle tag check
+                r = t + ACCESS_CYCLES;
+            }
+
             if (idx == -1) {
                 idx = i;
-            } else if (caches[i]->total_cycles < caches[idx]->total_cycles) {
+                best_total_cycles = t;
+                best_bus_req_time = r;
+            } else if (t < best_total_cycles || (t == best_total_cycles && r < best_bus_req_time)) {
+                // if instr is issued earlier or tie-break, handle the one with earlier bus req
                 idx = i;
+                best_total_cycles = t;
+                best_bus_req_time = r;
             }
         }
 
@@ -142,17 +162,26 @@ int main(int ac, char** av) {
 
         // "other" instr
         if (inst == 2) {
-            // TODO computation
             comp(curr_cache, val);
-            // continue;
         } else {
             // load (0) or store (1)
+            // need to first check if it needs the bus and whether bus is busy
+            ulong t_req = curr_cache->total_cycles + ACCESS_CYCLES;   // request after 1-cycle tag check
+            if (!cache_has(curr_cache, val) && t_req < bus->t_free) {
+                if (!next[idx].waiting) {
+                    next[idx].waiting = 1;
+                    next[idx].bus_req_time = best_bus_req_time;      // remember FIRST request time only
+                }
+                // wait (idle), - ACCESS_CYCLES because we add it
+                curr_cache->total_cycles = bus->t_free - ACCESS_CYCLES;  
+                continue;                            // skip refill -> same instr retried
+            }   
+            next[idx].waiting = 0;
+
             mem_instrs[idx]++;
             if (inst == 0) {
-                // TODO handle load logic
                 cache_pr_rd(curr_cache, bus, val);
             } else {
-                // TODO handle store logic
                 cache_pr_wr(curr_cache, bus, val);
             }
         }
@@ -160,22 +189,6 @@ int main(int ac, char** av) {
         // if end of list, store next as not valid
         next[idx].valid = read_line(&file_pos[idx], file_end[idx], &next[idx].inst, &next[idx].val);
     }
-
-    // while (read_line(&file_pos[0], file_end[0], &inst, &addr)) { // call custom line parser
-    //     if (inst == 2) {
-    //         // computation instr
-    //         comp(caches[0], addr);
-    //         continue;
-    //     }
-
-    //     // either load (0) or store (1)
-    //     ++mem_instrs;
-    //     if (inst == 0) {
-    //         cache_pr_rd(caches[0], bus, addr);
-    //     } else {
-    //         cache_pr_wr(caches[0], bus, addr);
-    //     }
-    // }
 
     // for printing
     ulong total[NUM_CORES], compute[NUM_CORES], idle[NUM_CORES];

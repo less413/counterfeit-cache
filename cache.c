@@ -195,3 +195,13 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
 }
 
 
+int cache_has(Cache* c, uint addr) {
+    uint tag = addr >> c->idx_off_bits;
+    uint idx = (addr >> c->off_bits) & c->idx_ones;
+    for (uint j = 0; j < c->assoc; ++j) {
+        uint arr_j = idx * c->assoc + j;
+        if (c->tags[arr_j] == tag && c->states[arr_j]) return 1;
+    }
+    return 0;
+}
+
