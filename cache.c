@@ -92,9 +92,11 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
             break;
         }
 
-        // track lru way
-        if (c->ts_used[arr_j] < lru_t) {
-            lru_t = c->ts_used[arr_j];
+        // track lru way; free lines (state 0: empty or invalidated by coherence)
+        // count as oldest, so they are filled before evicting a valid line
+        uint ts = c->states[arr_j] ? c->ts_used[arr_j] : 0;
+        if (ts < lru_t) {
+            lru_t = ts;
             way = j;
         }
     }
@@ -157,9 +159,11 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
             break;
         }
 
-        // track lru way
-        if (c->ts_used[arr_j] < lru_t) {
-            lru_t = c->ts_used[arr_j];
+        // track lru way; free lines (state 0: empty or invalidated by coherence)
+        // count as oldest, so they are filled before evicting a valid line
+        uint ts = c->states[arr_j] ? c->ts_used[arr_j] : 0;
+        if (ts < lru_t) {
+            lru_t = ts;
             way = j;
         }
     }
