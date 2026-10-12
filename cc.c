@@ -12,6 +12,23 @@
 #include "bus.h"
 #include "parse.h"
 
+
+typedef struct {
+    int valid;
+    uint inst; // aka label
+    uint val;
+} Pending;
+
+static void print_row(const ulong* v) {
+    for (int i = 0; i < NUM_CORES; ++i)
+        printf("%lu%c", v[i], i == NUM_CORES - 1 ? '\n' : ' ');
+}
+
+static void print_pair_row(const ulong* a, const ulong* b) {
+    for (int i = 0; i < NUM_CORES; ++i)
+        printf("%lu:%lu%c", a[i], b[i], i == NUM_CORES - 1 ? '\n' : ' ');
+}
+
 int main(int ac, char** av) {
     if (ac < 3 || ac > 6) {
         fprintf(stderr, "\nUsage: %s <protocol> <input_file> [<cache_size> [<associativity> [<block_size>]]]\n\n", av[0]);
@@ -86,7 +103,7 @@ int main(int ac, char** av) {
     free(filename);
 
     // initialize statistics
-    ulong mem_instrs = 0;
+    ulong mem_instrs[NUM_CORES] = {0, 0, 0, 0};
 
     // initialize cache
     Cache* caches[NUM_CORES];
@@ -96,47 +113,101 @@ int main(int ac, char** av) {
 
     // initialize bus
     Bus* bus = bus_create(caches);
+    
+    Pending next[NUM_CORES];
+    for (int i = 0; i < NUM_CORES; i++) {
+        next[i].valid = read_line(&file_pos[i], file_end[i], &next[i].inst, &next[i].val);
+    }
 
-    // read file
-    uint inst, addr;
-    // TODO extend to 4 cores
-    while (read_line(&file_pos[0], file_end[0], &inst, &addr)) { // call custom line parser
+    // notes: issue_time just use cache[idx]->total_cycles;
+    // no need to explicitly update issue_time, the functions does it
+    while (1) {
+
+        int idx = -1;
+        for (int i = 0; i < NUM_CORES; i++) {
+            if (!next[i].valid) continue;
+            
+            if (idx == -1) {
+                idx = i;
+            } else if (caches[i]->total_cycles < caches[idx]->total_cycles) {
+                idx = i;
+            }
+        }
+
+        if (idx < 0) break;
+
+        Cache* curr_cache = caches[idx];
+        uint inst = next[idx].inst;
+        uint val = next[idx].val;
+
+        // "other" instr
         if (inst == 2) {
-            // computation instr
-            comp(caches[0], addr);
-            continue;
+            // TODO computation
+            comp(curr_cache, val);
+            // continue;
+        } else {
+            // load (0) or store (1)
+            mem_instrs[idx]++;
+            if (inst == 0) {
+                // TODO handle load logic
+                cache_pr_rd(curr_cache, bus, val);
+            } else {
+                // TODO handle store logic
+                cache_pr_wr(curr_cache, bus, val);
+            }
         }
 
-        // either load (0) or store (1)
-        ++mem_instrs;
-        if (inst == 0) {
-            cache_pr_rd(caches[0], bus, addr);
-        } else {
-            cache_pr_wr(caches[0], bus, addr);
-        }
+        // if end of list, store next as not valid
+        next[idx].valid = read_line(&file_pos[idx], file_end[idx], &next[idx].inst, &next[idx].val);
+    }
+
+    // while (read_line(&file_pos[0], file_end[0], &inst, &addr)) { // call custom line parser
+    //     if (inst == 2) {
+    //         // computation instr
+    //         comp(caches[0], addr);
+    //         continue;
+    //     }
+
+    //     // either load (0) or store (1)
+    //     ++mem_instrs;
+    //     if (inst == 0) {
+    //         cache_pr_rd(caches[0], bus, addr);
+    //     } else {
+    //         cache_pr_wr(caches[0], bus, addr);
+    //     }
+    // }
+
+    // for printing
+    ulong total[NUM_CORES], compute[NUM_CORES], idle[NUM_CORES];
+    ulong hits[NUM_CORES], misses[NUM_CORES], priv[NUM_CORES], shared[NUM_CORES];
+    for (int i = 0; i < NUM_CORES; ++i) {
+        Cache* c = caches[i];
+        total[i]   = c->total_cycles;
+        compute[i] = c->comp_cycles;
+        idle[i]    = c->total_cycles - c->comp_cycles;
+        hits[i]    = c->p_hits + c->s_hits;
+        misses[i]  = c->misses;
+        priv[i]    = c->p_hits;
+        shared[i]  = c->s_hits;
     }
 
     // print results
-    // 1. total execution cycles per core "aaa bbb ccc ddd"
-    printf("%lu\n", caches[0]->total_cycles);
-    // 2. compute cycles per core "aaa bbb ccc ddd"
-    printf("%lu\n", caches[0]->comp_cycles);
-    // 3. load/store instrs per core "aaa bbb ccc ddd"
-    printf("%lu\n", mem_instrs);
-    // 4. idle cycles per core "aaa bbb ccc ddd"
-    printf("%lu\n", caches[0]->total_cycles - caches[0]->comp_cycles); // idle cycles
-    // 5. cache hit:miss per core "h:m h:m h:m h:m"
-    printf("%lu:%lu\n", caches[0]->p_hits, caches[0]->misses);
-    // 6. bus data traffic "bytes"
-    printf("%lu\n", bus->data_traffic);
-    // 7. bus invalidations/updates
-    // 8. cache private:shared hits per core "p:s p:s p:s p:s"
+    print_row(total);                           // 1. total execution cycles per core "aaa bbb ccc ddd"
+    print_row(compute);                         // 2. compute cycles per core "aaa bbb ccc ddd"
+    print_row(mem_instrs);                      // 3. load/store instrs per core "aaa bbb ccc ddd"
+    print_row(idle);                            // 4. idle cycles per core "aaa bbb ccc ddd"
+    print_pair_row(hits, misses);               // 5. cache hit:miss per core "h:m h:m h:m h:m"
+    printf("%lu\n", bus->data_traffic);         // 6. bus data traffic "bytes"
+    printf("%lu\n", bus->invalidations);        // 7. bus invalidations/updates
+    print_pair_row(priv, shared);               // 8. cache private:shared hits per core "p:s p:s p:s p:s"
 
     // free resources
     for (int i = 0; i < NUM_CORES; ++i) {
         close(fds[i]);
     }
     bus_free(bus);
-    cache_free(caches[0]);
+    for (int i = 0; i < NUM_CORES; i++) {
+        cache_free(caches[i]);
+    }
 }
 

@@ -9,6 +9,7 @@ Bus* bus_create(Cache** caches) {
     // initialize
     b->data_traffic = 0;
     b->invalidations = 0;
+    b->t_free = 0;
     for (int i = 0; i < NUM_CORES; ++i) {
         b->caches[i] = caches[i];
     }
@@ -25,9 +26,11 @@ void bus_free(Bus* b) {
 void bus_flush_mem(Cache* c, Bus* b) {
     c->total_cycles += FLUSH_MEM_CYCLES;
     b->data_traffic += c->block_size;
+    b->t_free = c->total_cycles;
 }
 
 void bus_rd(Cache* c, Bus* b) {
     c->total_cycles += LOAD_MEM_CYCLES;
     b->data_traffic += c->block_size;
+    b->t_free = c->total_cycles;
 }

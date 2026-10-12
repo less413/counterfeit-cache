@@ -13,6 +13,7 @@ struct Bus {
     // bus stats
     ulong data_traffic;
     ulong invalidations;
+    ulong t_free; // cycle at which the bus is next free
 };
 
 Bus* bus_create(Cache** caches);
