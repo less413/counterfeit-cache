@@ -40,7 +40,8 @@ void comp(Cache* c, uint cycles);
 void cache_pr_rd(Cache* c, Bus* b, uint addr);
 void cache_pr_wr(Cache* c, Bus* b, uint addr);
 
-int cache_has(Cache* c, uint addr);
+int cache_find(Cache* c, uint addr);
+int cache_needs_bus(Cache* c, uint addr, int is_write);
 
 
 #endif

@@ -29,8 +29,42 @@ void bus_flush_mem(Cache* c, Bus* b) {
     b->t_free = c->total_cycles;
 }
 
-void bus_rd(Cache* c, Bus* b) {
-    c->total_cycles += LOAD_MEM_CYCLES;
+// #cycles to send one block cache-to-cache; 2N, N = #words
+static ulong c2c_cycles(Cache* c) {
+    return C2C_CYCLES_PER_WORD * (c->block_size / WORD_SIZE);
+}
+
+// BusRd  (exclusive = 0): E/S/M -> S   (M flushes; memory picks it up too)
+// BusRdX (exclusive = 1): E/S/M -> I   (int exclusive flag to indicate BusRdX)
+// return 1 if other cache has a copy, else 0
+static int snoop(Cache* c, Bus* b, uint addr, int exclusive) {
+    int found = 0;
+    for (int j = 0; j < NUM_CORES; ++j) {
+        Cache* o = b->caches[j];
+        if (o == c) continue;                  // skip the requester
+        int k = cache_find(o, addr);
+        if (k < 0) continue;
+        found = 1;
+        o->states[k] = exclusive ? ST_I : ST_S;
+    }
+    return found;
+}
+
+// BusRd for a read miss. Returns the requester's new state: S if shared, else E.
+uint bus_rd(Cache* c, Bus* b, uint addr) {
+    int shared = snoop(c, b, addr, 0);
+    c->total_cycles += shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
+    b->data_traffic += c->block_size;
+    b->t_free = c->total_cycles;
+    return shared ? ST_S : ST_E;
+}
+
+// BusRdX for a write miss, or a write hit in S. Requester ends in M.
+void bus_rdx(Cache* c, Bus* b, uint addr) {
+    int shared = snoop(c, b, addr, 1);
+    if (shared) ++b->invalidations;            // 1 per transaction
+    c->total_cycles += shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
 }
+

@@ -88,7 +88,11 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
             LOG("wow cache hit\n");
             has_match = 1;
             way = j;
-            ++c->p_hits; // all hits here are private
+            if (c->states[arr_j] == ST_S) {
+                ++c->s_hits; 
+            } else {
+                ++c->p_hits;
+            }
             break;
         }
 
@@ -108,16 +112,11 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
         LOG("oh no cache miss\n");
         ++c->misses;
 
-        // if block is dirty
-        if (c->states[arr_i] == 3) {
-            // FLUSH to mem
-            bus_flush_mem(c, b);
-        }
+        if (c->states[arr_i] == ST_M) bus_flush_mem(c, b);
 
         // LOAD new block
-        bus_rd(c, b);
         c->tags[arr_i] = tag;
-        c->states[arr_i] = 2;
+        c->states[arr_i] = bus_rd(c, b, addr);
     }
 
     LOG("way: %d\n\n", way);
@@ -155,7 +154,12 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
             LOG("wow cache hit\n");
             has_match = 1;
             way = j;
-            ++c->p_hits; // all hits here are private
+            if (c->states[arr_j] == ST_S) {
+                ++c->s_hits;
+                bus_rdx(c, b, addr);       // S -> M: invalidate others (BusRdX)
+            } else {
+                ++c->p_hits;               // E or M: silent
+            }
             break;
         }
 
@@ -175,21 +179,18 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
         LOG("oh no cache miss\n");
         ++c->misses;
 
-        // if block is dirty
-        if (c->states[arr_i] == 3) {
-            // FLUSH to mem
-            bus_flush_mem(c, b);
-        }
-
+        // if block is dirty 
+        if (c->states[arr_i] == ST_M) bus_flush_mem(c, b);
+        
         // LOAD new block
-        bus_rd(c, b);
+        bus_rdx(c, b, addr);
         c->tags[arr_i] = tag;
     }
 
     LOG("way: %d\n\n", way);
 
     // 3. for store instructions: update state to dirty
-    c->states[arr_i] = 3;
+    c->states[arr_i] = ST_M;
 
     // 4. update t
     c->ts_used[arr_i] = c->t_next;
@@ -198,14 +199,21 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
     c->total_cycles += cycles;
 }
 
-
-int cache_has(Cache* c, uint addr) {
+// check if cache contains a certain address
+int cache_find(Cache* c, uint addr) {
     uint tag = addr >> c->idx_off_bits;
     uint idx = (addr >> c->off_bits) & c->idx_ones;
     for (uint j = 0; j < c->assoc; ++j) {
         uint arr_j = idx * c->assoc + j;
-        if (c->tags[arr_j] == tag && c->states[arr_j]) return 1;
+        if (c->tags[arr_j] == tag && c->states[arr_j]) return arr_j;
     }
-    return 0;
+    return -1;
+}
+
+// returns 1 if a miss, or a write to a cache line with state S
+int cache_needs_bus(Cache* c, uint addr, int is_write) {
+    int k = cache_find(c, addr);
+    if (k < 0) return 1;
+    return is_write && c->states[k] == ST_S;
 }
 
