@@ -199,6 +199,27 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
     c->total_cycles += cycles;
 }
 
+// returns 1 if sends data, 0 otherwise
+int cache_bus_rd(Cache* c, uint addr) {
+    int arr_i = cache_find(c, addr);
+    if (arr_i < 0) {
+        return 0;
+    }
+    c->states[arr_i] = ST_S;
+    return 1;
+}
+
+// returns 1 if sends (and flushes) data, 0 otherwise
+int cache_bus_rdx(Cache* c, uint addr) {
+    int arr_i = cache_find(c, addr);
+    if (arr_i < 0) {
+        return 0;
+    }
+    c->states[arr_i] = ST_I;
+    return 1;
+}
+
+
 // check if cache contains a certain address
 // returns cache block's flat array index (or -1 if not found)
 int cache_find(Cache* c, uint addr) {

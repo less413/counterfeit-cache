@@ -39,13 +39,22 @@ static ulong c2c_cycles(Cache* c) {
 // return 1 if other cache has a copy, else 0
 static int snoop(Cache* c, Bus* b, uint addr, int exclusive) {
     int found = 0;
-    for (int j = 0; j < NUM_CORES; ++j) {
-        Cache* o = b->caches[j];
-        if (o == c) continue;                  // skip the requester
-        int k = cache_find(o, addr);
-        if (k < 0) continue;
-        found = 1;
-        o->states[k] = exclusive ? ST_I : ST_S;
+    if (exclusive) {
+        for (int j = 0; j < NUM_CORES; ++j) {
+            Cache* o = b->caches[j];
+            if (o == c) { // skip the requester
+                continue;
+            }
+            found |= cache_bus_rdx(o, addr);
+        }
+    } else {
+        for (int j = 0; j < NUM_CORES; ++j) {
+            Cache* o = b->caches[j];
+            if (o == c) { // skip the requester
+                continue;
+            }
+            found |= cache_bus_rd(o, addr);
+        }
     }
     return found;
 }
