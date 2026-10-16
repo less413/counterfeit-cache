@@ -200,6 +200,7 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
 }
 
 // check if cache contains a certain address
+// returns cache block's flat array index (or -1 if not found)
 int cache_find(Cache* c, uint addr) {
     uint tag = addr >> c->idx_off_bits;
     uint idx = (addr >> c->off_bits) & c->idx_ones;

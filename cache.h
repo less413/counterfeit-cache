@@ -5,7 +5,6 @@
 
 typedef struct Bus Bus;
 
-// CACHE
 typedef struct Cache {
     // cache info
     uint num_sets;
@@ -32,7 +31,6 @@ typedef struct Cache {
     ulong misses;
 } Cache;
 
-
 Cache* cache_create(uint cache_size, uint assoc, uint block_size);
 void cache_free(Cache* c);
 
@@ -42,6 +40,5 @@ void cache_pr_wr(Cache* c, Bus* b, uint addr);
 
 int cache_find(Cache* c, uint addr);
 int cache_needs_bus(Cache* c, uint addr, int is_write);
-
 
 #endif

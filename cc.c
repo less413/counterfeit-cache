@@ -12,7 +12,6 @@
 #include "bus.h"
 #include "parse.h"
 
-
 typedef struct {
     int valid;
     uint inst; // aka label
@@ -129,6 +128,8 @@ int main(int ac, char** av) {
         int idx = -1;
         ulong best_total_cycles = 0;
         ulong best_bus_req_time = 0;
+
+        // decide which processor to run next
         for (int i = 0; i < NUM_CORES; i++) {
             if (!next[i].valid) continue;
             
