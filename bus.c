@@ -34,34 +34,16 @@ static ulong c2c_cycles(Cache* c) {
     return C2C_CYCLES_PER_WORD * (c->block_size / WORD_SIZE);
 }
 
-// BusRd  (exclusive = 0): E/S/M -> S   (M flushes; memory picks it up too)
-// BusRdX (exclusive = 1): E/S/M -> I   (int exclusive flag to indicate BusRdX)
-// return 1 if other cache has a copy, else 0
-static int snoop(Cache* c, Bus* b, uint addr, int exclusive) {
-    int found = 0;
-    if (exclusive) {
-        for (int j = 0; j < NUM_CORES; ++j) {
-            Cache* o = b->caches[j];
-            if (o == c) { // skip the requester
-                continue;
-            }
-            found |= cache_bus_rdx(o, addr);
-        }
-    } else {
-        for (int j = 0; j < NUM_CORES; ++j) {
-            Cache* o = b->caches[j];
-            if (o == c) { // skip the requester
-                continue;
-            }
-            found |= cache_bus_rd(o, addr);
-        }
-    }
-    return found;
-}
-
 // BusRd for a read miss. Returns the requester's new state: S if shared, else E.
 uint bus_rd(Cache* c, Bus* b, uint addr) {
-    int shared = snoop(c, b, addr, 0);
+    int shared = 0;
+    for (int j = 0; j < NUM_CORES; ++j) {
+        Cache* o = b->caches[j];
+        if (o == c) { // skip the requester
+            continue;
+        }
+        shared |= cache_bus_rd(o, addr);
+    }
     c->total_cycles += shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
@@ -70,7 +52,14 @@ uint bus_rd(Cache* c, Bus* b, uint addr) {
 
 // BusRdX for a write miss, or a write hit in S. Requester ends in M.
 void bus_rdx(Cache* c, Bus* b, uint addr) {
-    int shared = snoop(c, b, addr, 1);
+    int shared = 0;
+    for (int j = 0; j < NUM_CORES; ++j) {
+        Cache* o = b->caches[j];
+        if (o == c) { // skip the requester
+            continue;
+        }
+        shared |= cache_bus_rdx(o, addr);
+    }
     if (shared) ++b->invalidations;            // 1 per transaction
     c->total_cycles += shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
     b->data_traffic += c->block_size;

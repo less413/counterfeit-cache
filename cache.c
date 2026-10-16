@@ -199,6 +199,7 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
     c->total_cycles += cycles;
 }
 
+// BusRd:  E/S/M -> S   (M flushes; memory picks it up too)
 // returns 1 if sends data, 0 otherwise
 int cache_bus_rd(Cache* c, uint addr) {
     int arr_i = cache_find(c, addr);
@@ -209,6 +210,7 @@ int cache_bus_rd(Cache* c, uint addr) {
     return 1;
 }
 
+// BusRdX: E/S/M -> I   (int exclusive flag to indicate BusRdX)
 // returns 1 if sends (and flushes) data, 0 otherwise
 int cache_bus_rdx(Cache* c, uint addr) {
     int arr_i = cache_find(c, addr);

@@ -16,7 +16,7 @@ static inline int read_line(const char** pp, const char* end, uint* inst, uint* 
     file_pos += 3; // skip the " 0x"
 
     uint32_t x = 0;
-    // this parser assumes the hex number only contains 0-9 and a-f
+    // this parser assumes the hex number only contains 0-9 and a-f and A-F
     while (file_pos < end) {
         unsigned char c = (unsigned char)*file_pos;
         if (c >= '0' && c <= '9') {
