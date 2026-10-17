@@ -11,6 +11,9 @@ static inline int read_line(const char** pp, const char* end, uint32_t* inst, ui
     }
 
     *inst = (uint32_t)(*file_pos++ - '0');
+    if (*inst > 2) {
+        return 0;
+    }
 
     file_pos += 3; // skip the " 0x"
 
