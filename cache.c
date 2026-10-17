@@ -65,8 +65,6 @@ void comp(Cache* c, uint32_t cycles) {
 
 // instruction 0 (read)
 void cache_pr_rd (Cache* c, Bus* b, uint32_t addr) {
-    uint64_t cycles = 0;
-
     int has_match = 0;
     uint32_t tag = addr >> c->idx_off_bits;
     uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
@@ -125,14 +123,10 @@ void cache_pr_rd (Cache* c, Bus* b, uint32_t addr) {
     // 3. update t
     c->ts_used[arr_i] = c->t_next;
     ++c->t_next;
-
-    c->total_cycles += cycles;
 }
 
 // instruction 1 (write)
 void cache_pr_wr (Cache* c, Bus* b, uint32_t addr) {
-    uint64_t cycles = 0;
-
     int has_match = 0;
     uint32_t tag = addr >> c->idx_off_bits;
     uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
@@ -196,8 +190,6 @@ void cache_pr_wr (Cache* c, Bus* b, uint32_t addr) {
     // 4. update t
     c->ts_used[arr_i] = c->t_next;
     ++c->t_next;
-
-    c->total_cycles += cycles;
 }
 
 // BusRd:  E/S/M -> S   (M flushes; memory picks it up too)
