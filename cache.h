@@ -1,47 +1,47 @@
 #ifndef CACHE_H
 #define CACHE_H
 
-#include <sys/types.h>
+#include <stdint.h>
 
 typedef struct Bus Bus;
 
 typedef struct Cache {
     // cache info
-    uint num_sets;
-    uint assoc;
-    uint block_size;
+    uint32_t num_sets;
+    uint32_t assoc;
+    uint32_t block_size;
 
     // helpers
-    uint idx_bits; // this might be redundant
-    uint off_bits;
-    uint idx_off_bits;
-    uint idx_ones;
+    uint32_t idx_bits; // this might be redundant
+    uint32_t off_bits;
+    uint32_t idx_off_bits;
+    uint32_t idx_ones;
 
     // entries
-    uint t_next;
-    uint* tags;
-    uint* states;
-    uint* ts_used;
+    uint32_t t_next;
+    uint32_t* tags;
+    uint32_t* states;
+    uint32_t* ts_used;
 
     // stats
-    ulong total_cycles;
-    ulong comp_cycles;
-    ulong p_hits;
-    ulong s_hits;
-    ulong misses;
+    uint64_t total_cycles;
+    uint64_t comp_cycles;
+    uint64_t p_hits;
+    uint64_t s_hits;
+    uint64_t misses;
 } Cache;
 
-Cache* cache_create(uint cache_size, uint assoc, uint block_size);
+Cache* cache_create(uint32_t cache_size, uint32_t assoc, uint32_t block_size);
 void cache_free(Cache* c);
 
-void comp(Cache* c, uint cycles);
-void cache_pr_rd(Cache* c, Bus* b, uint addr);
-void cache_pr_wr(Cache* c, Bus* b, uint addr);
+void comp(Cache* c, uint32_t cycles);
+void cache_pr_rd(Cache* c, Bus* b, uint32_t addr);
+void cache_pr_wr(Cache* c, Bus* b, uint32_t addr);
 
-int cache_bus_rd(Cache* c, uint addr);
-int cache_bus_rdx(Cache* c, uint addr);
+int cache_bus_rd(Cache* c, uint32_t addr);
+int cache_bus_rdx(Cache* c, uint32_t addr);
 
-int cache_find(Cache* c, uint addr);
-int cache_needs_bus(Cache* c, uint addr, int is_write);
+int cache_find(Cache* c, uint32_t addr);
+int cache_needs_bus(Cache* c, uint32_t addr, int is_write);
 
 #endif

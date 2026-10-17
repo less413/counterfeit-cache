@@ -1,7 +1,6 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -14,18 +13,18 @@
 
 typedef struct {
     int valid;
-    uint inst; // aka label
-    uint val;
+    uint32_t inst; // aka label
+    uint32_t val;
     int waiting; // flag to indicate stalled waiting for the bus
-    ulong bus_req_time; // cycle it first request for the bus
+    uint64_t bus_req_time; // cycle it first request for the bus
 } Pending;
 
-static void print_row(const ulong* v) {
+static void print_row(const uint64_t* v) {
     for (int i = 0; i < NUM_CORES; ++i)
         printf("%lu%c", v[i], i == NUM_CORES - 1 ? '\n' : ' ');
 }
 
-static void print_pair_row(const ulong* a, const ulong* b) {
+static void print_pair_row(const uint64_t* a, const uint64_t* b) {
     for (int i = 0; i < NUM_CORES; ++i)
         printf("%lu:%lu%c", a[i], b[i], i == NUM_CORES - 1 ? '\n' : ' ');
 }
@@ -38,9 +37,9 @@ int main(int ac, char** av) {
 
     char* protocol = av[1];
     char* input_file = av[2];
-    uint cache_size = 4096;
-    uint associativity = 2;
-    uint block_size = 32;
+    uint32_t cache_size = 4096;
+    uint32_t associativity = 2;
+    uint32_t block_size = 32;
 
     if (ac >= 4) {
         cache_size = atoi(av[3]);
@@ -104,7 +103,7 @@ int main(int ac, char** av) {
     free(filename);
 
     // initialize statistics
-    ulong mem_instrs[NUM_CORES] = {0, 0, 0, 0};
+    uint64_t mem_instrs[NUM_CORES] = {0, 0, 0, 0};
 
     // initialize cache
     Cache* caches[NUM_CORES];
@@ -126,15 +125,15 @@ int main(int ac, char** av) {
     // no need to explicitly update issue_time, the functions does it
     while (1) {
         int idx = -1;
-        ulong best_total_cycles = 0;
-        ulong best_bus_req_time = 0;
+        uint64_t best_total_cycles = 0;
+        uint64_t best_bus_req_time = 0;
 
         // decide which processor to run next
         for (int i = 0; i < NUM_CORES; i++) {
             if (!next[i].valid) continue;
             
-            ulong t = caches[i]->total_cycles; // total cycles of candidate 
-            ulong r; // bus_req_time of candidate
+            uint64_t t = caches[i]->total_cycles; // total cycles of candidate 
+            uint64_t r; // bus_req_time of candidate
             if (next[i].waiting) {
                 // already stalled once, use the time it FIRST asked for the bus
                 r = next[i].bus_req_time;
@@ -158,8 +157,8 @@ int main(int ac, char** av) {
         if (idx < 0) break;
 
         Cache* curr_cache = caches[idx];
-        uint inst = next[idx].inst;
-        uint val = next[idx].val;
+        uint32_t inst = next[idx].inst;
+        uint32_t val = next[idx].val;
 
         // "other" instr
         if (inst == 2) {
@@ -167,7 +166,7 @@ int main(int ac, char** av) {
         } else {
             // load (0) or store (1)
             // need to first check if it needs the bus and whether bus is busy
-            ulong t_req = curr_cache->total_cycles + ACCESS_CYCLES;   // request after 1-cycle tag check
+            uint64_t t_req = curr_cache->total_cycles + ACCESS_CYCLES;   // request after 1-cycle tag check
             if (cache_needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
                 if (!next[idx].waiting) {
                     next[idx].waiting = 1;
@@ -192,8 +191,8 @@ int main(int ac, char** av) {
     }
 
     // for printing
-    ulong total[NUM_CORES], compute[NUM_CORES], idle[NUM_CORES];
-    ulong hits[NUM_CORES], misses[NUM_CORES], priv[NUM_CORES], shared[NUM_CORES];
+    uint64_t total[NUM_CORES], compute[NUM_CORES], idle[NUM_CORES];
+    uint64_t hits[NUM_CORES], misses[NUM_CORES], priv[NUM_CORES], shared[NUM_CORES];
     for (int i = 0; i < NUM_CORES; ++i) {
         Cache* c = caches[i];
         total[i]   = c->total_cycles;

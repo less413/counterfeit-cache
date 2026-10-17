@@ -1,6 +1,8 @@
 #ifndef CC_H
 #define CC_H
 
+#include <stdio.h>
+
 #define NUM_CORES 4
 #define WORD_SIZE 4
 

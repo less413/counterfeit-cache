@@ -2,16 +2,15 @@
 #define PARSE_H
 
 #include <stdint.h>
-#include <stdlib.h>
 
 // custom parser that assumes each line contains "<0-2> 0x<32b hex>"
-static inline int read_line(const char** pp, const char* end, uint* inst, uint* addr) {
+static inline int read_line(const char** pp, const char* end, uint32_t* inst, uint32_t* addr) {
     const char* file_pos = *pp;
     if (file_pos >= end) {
         return 0; // stop file parsing
     }
 
-    *inst = (uint)(*file_pos++ - '0');
+    *inst = (uint32_t)(*file_pos++ - '0');
 
     file_pos += 3; // skip the " 0x"
 

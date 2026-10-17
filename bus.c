@@ -1,7 +1,7 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include "cc.h"
 #include "bus.h"
-
 
 Bus* bus_create(Cache** caches) {
     Bus* b = malloc(sizeof(Bus));
@@ -30,12 +30,12 @@ void bus_flush_mem(Cache* c, Bus* b) {
 }
 
 // #cycles to send one block cache-to-cache; 2N, N = #words
-static ulong c2c_cycles(Cache* c) {
+static uint64_t c2c_cycles(Cache* c) {
     return C2C_CYCLES_PER_WORD * (c->block_size / WORD_SIZE);
 }
 
 // BusRd for a read miss. Returns the requester's new state: S if shared, else E.
-uint bus_rd(Cache* c, Bus* b, uint addr) {
+uint32_t bus_rd(Cache* c, Bus* b, uint32_t addr) {
     int shared = 0;
     for (int j = 0; j < NUM_CORES; ++j) {
         Cache* o = b->caches[j];
@@ -51,7 +51,7 @@ uint bus_rd(Cache* c, Bus* b, uint addr) {
 }
 
 // BusRdX for a write miss, or a write hit in S. Requester ends in M.
-void bus_rdx(Cache* c, Bus* b, uint addr) {
+void bus_rdx(Cache* c, Bus* b, uint32_t addr) {
     int shared = 0;
     for (int j = 0; j < NUM_CORES; ++j) {
         Cache* o = b->caches[j];

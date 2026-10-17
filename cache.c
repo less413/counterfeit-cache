@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -7,11 +8,11 @@
 #include "bus.h"
 
 // CACHE FUNCTIONS
-Cache* cache_create(uint cache_size, uint assoc, uint block_size) {
+Cache* cache_create(uint32_t cache_size, uint32_t assoc, uint32_t block_size) {
     Cache* c = malloc(sizeof(Cache));
 
-    uint col_size = cache_size / assoc;
-    uint num_sets = col_size / block_size;
+    uint32_t col_size = cache_size / assoc;
+    uint32_t num_sets = col_size / block_size;
 
     c->num_sets = num_sets;
     c->assoc = assoc;
@@ -30,13 +31,13 @@ Cache* cache_create(uint cache_size, uint assoc, uint block_size) {
 
     // malloc
     size_t total_entries = num_sets * assoc;
-    c->tags = malloc(total_entries * sizeof(uint));
-    c->states = malloc(total_entries * sizeof(uint));
-    c->ts_used = malloc(total_entries * sizeof(uint));
+    c->tags = malloc(total_entries * sizeof(uint32_t));
+    c->states = malloc(total_entries * sizeof(uint32_t));
+    c->ts_used = malloc(total_entries * sizeof(uint32_t));
 
     c->t_next = 1;
-    memset(c->states, 0, total_entries * sizeof(uint));
-    memset(c->ts_used, 0, total_entries * sizeof(uint));
+    memset(c->states, 0, total_entries * sizeof(uint32_t));
+    memset(c->ts_used, 0, total_entries * sizeof(uint32_t));
 
     c->total_cycles = 0;
     c->comp_cycles = 0;
@@ -57,31 +58,31 @@ void cache_free(Cache* c) {
 }
 
 // instruction 2 (compute)
-void comp(Cache* c, uint cycles) {
+void comp(Cache* c, uint32_t cycles) {
     c->total_cycles += cycles;
     c->comp_cycles += cycles;
 }
 
 // instruction 0 (read)
-void cache_pr_rd (Cache* c, Bus* b, uint addr) {
-    ulong cycles = 0;
+void cache_pr_rd (Cache* c, Bus* b, uint32_t addr) {
+    uint64_t cycles = 0;
 
     int has_match = 0;
-    uint tag = addr >> c->idx_off_bits;
-    uint idx = (addr >> c->off_bits) & c->idx_ones;
+    uint32_t tag = addr >> c->idx_off_bits;
+    uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
 
     LOG("read  address: %x\n", addr);
     LOG("tag: %x\n", tag);
     LOG("idx: %x\n", idx);
 
-    uint way = 0; // way to be updated
-    uint lru_t = UINT_MAX;
+    uint32_t way = 0; // way to be updated
+    uint32_t lru_t = UINT_MAX;
 
     c->total_cycles += ACCESS_CYCLES;
 
     // 1. check set for match
-    for (uint j = 0; j < c->assoc; ++j) {
-        uint arr_j = idx * c->assoc + j;
+    for (uint32_t j = 0; j < c->assoc; ++j) {
+        uint32_t arr_j = idx * c->assoc + j;
         LOG("%d,%d: tag: %x  state: %d\n", idx, j, c->tags[arr_j], c->states[arr_j]);
         if (c->tags[arr_j] == tag && c->states[arr_j]) {
             // cache hit
@@ -98,14 +99,14 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
 
         // track lru way; free lines (state 0: empty or invalidated by coherence)
         // count as oldest, so they are filled before evicting a valid line
-        uint ts = c->states[arr_j] ? c->ts_used[arr_j] : 0;
+        uint32_t ts = c->states[arr_j] ? c->ts_used[arr_j] : 0;
         if (ts < lru_t) {
             lru_t = ts;
             way = j;
         }
     }
 
-    uint arr_i = idx * c->assoc + way;
+    uint32_t arr_i = idx * c->assoc + way;
 
     // 2. (if no match) evict/load block
     if (!has_match) {
@@ -129,25 +130,25 @@ void cache_pr_rd (Cache* c, Bus* b, uint addr) {
 }
 
 // instruction 1 (write)
-void cache_pr_wr (Cache* c, Bus* b, uint addr) {
-    ulong cycles = 0;
+void cache_pr_wr (Cache* c, Bus* b, uint32_t addr) {
+    uint64_t cycles = 0;
 
     int has_match = 0;
-    uint tag = addr >> c->idx_off_bits;
-    uint idx = (addr >> c->off_bits) & c->idx_ones;
+    uint32_t tag = addr >> c->idx_off_bits;
+    uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
 
     LOG("write address: %x\n", addr);
     LOG("tag: %x\n", tag);
     LOG("idx: %x\n", idx);
 
-    uint way = 0; // way to be updated
-    uint lru_t = UINT_MAX;
+    uint32_t way = 0; // way to be updated
+    uint32_t lru_t = UINT_MAX;
 
     c->total_cycles += ACCESS_CYCLES;
 
     // 1. check set for match
-    for (uint j = 0; j < c->assoc; ++j) {
-        uint arr_j = idx * c->assoc + j;
+    for (uint32_t j = 0; j < c->assoc; ++j) {
+        uint32_t arr_j = idx * c->assoc + j;
         LOG("%d,%d: tag: %x  state: %d\n", idx, j, c->tags[arr_j], c->states[arr_j]);
         if (c->tags[arr_j] == tag && c->states[arr_j]) {
             // cache hit
@@ -165,14 +166,14 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
 
         // track lru way; free lines (state 0: empty or invalidated by coherence)
         // count as oldest, so they are filled before evicting a valid line
-        uint ts = c->states[arr_j] ? c->ts_used[arr_j] : 0;
+        uint32_t ts = c->states[arr_j] ? c->ts_used[arr_j] : 0;
         if (ts < lru_t) {
             lru_t = ts;
             way = j;
         }
     }
 
-    uint arr_i = idx * c->assoc + way;
+    uint32_t arr_i = idx * c->assoc + way;
 
     // 2. (if no match) evict/load block
     if (!has_match) {
@@ -201,7 +202,7 @@ void cache_pr_wr (Cache* c, Bus* b, uint addr) {
 
 // BusRd:  E/S/M -> S   (M flushes; memory picks it up too)
 // returns 1 if sends data, 0 otherwise
-int cache_bus_rd(Cache* c, uint addr) {
+int cache_bus_rd(Cache* c, uint32_t addr) {
     int arr_i = cache_find(c, addr);
     if (arr_i < 0) {
         return 0;
@@ -212,7 +213,7 @@ int cache_bus_rd(Cache* c, uint addr) {
 
 // BusRdX: E/S/M -> I   (int exclusive flag to indicate BusRdX)
 // returns 1 if sends (and flushes) data, 0 otherwise
-int cache_bus_rdx(Cache* c, uint addr) {
+int cache_bus_rdx(Cache* c, uint32_t addr) {
     int arr_i = cache_find(c, addr);
     if (arr_i < 0) {
         return 0;
@@ -224,18 +225,18 @@ int cache_bus_rdx(Cache* c, uint addr) {
 
 // check if cache contains a certain address
 // returns cache block's flat array index (or -1 if not found)
-int cache_find(Cache* c, uint addr) {
-    uint tag = addr >> c->idx_off_bits;
-    uint idx = (addr >> c->off_bits) & c->idx_ones;
-    for (uint j = 0; j < c->assoc; ++j) {
-        uint arr_j = idx * c->assoc + j;
+int cache_find(Cache* c, uint32_t addr) {
+    uint32_t tag = addr >> c->idx_off_bits;
+    uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
+    for (uint32_t j = 0; j < c->assoc; ++j) {
+        uint32_t arr_j = idx * c->assoc + j;
         if (c->tags[arr_j] == tag && c->states[arr_j]) return arr_j;
     }
     return -1;
 }
 
 // returns 1 if a miss, or a write to a cache line with state S
-int cache_needs_bus(Cache* c, uint addr, int is_write) {
+int cache_needs_bus(Cache* c, uint32_t addr, int is_write) {
     int k = cache_find(c, addr);
     if (k < 0) return 1;
     return is_write && c->states[k] == ST_S;
