@@ -7,6 +7,7 @@ CC-Simulate
 *.zip
 
 # other stuff
+*.sh
 *.out
 *.err
 *.swp
