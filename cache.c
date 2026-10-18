@@ -7,8 +7,8 @@
 #include "cache.h"
 #include "bus.h"
 
-static CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit);
-static CacheBlock* cache_find(Cache* c, uint32_t addr);
+static inline CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit);
+static inline CacheBlock* cache_find(Cache* c, uint32_t addr);
 
 Cache* cache_create(uint32_t cache_size, uint32_t assoc, uint32_t block_size) {
     Cache* c = malloc(sizeof(Cache));
@@ -164,7 +164,7 @@ int cache_bus_rdx(Cache* c, uint32_t addr) {
 
 // check if cache contains a certain address
 // returns cache block on hit, victim block on miss
-static CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
+static inline CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
     uint32_t tag = addr >> c->idx_off_bits;
     uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
 
@@ -199,7 +199,7 @@ static CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
 
 // check if cache contains a certain address
 // returns cache block on hit, NULL on miss
-static CacheBlock* cache_find(Cache* c, uint32_t addr) {
+static inline CacheBlock* cache_find(Cache* c, uint32_t addr) {
     int hit;
     CacheBlock* block = cache_get_block(c, addr, &hit);
     return hit ? block : NULL;
