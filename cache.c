@@ -7,6 +7,7 @@
 #include "cache.h"
 #include "bus.h"
 
+static CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit);
 static CacheBlock* cache_find(Cache* c, uint32_t addr);
 
 Cache* cache_create(uint32_t cache_size, uint32_t assoc, uint32_t block_size) {
@@ -60,49 +61,25 @@ void comp(Cache* c, uint32_t cycles) {
 
 // instruction 0 (read)
 void cache_pr_rd (Cache* c, Bus* b, uint32_t addr) {
-    int has_match = 0;
     uint32_t tag = addr >> c->idx_off_bits;
-    uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
+    // uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
 
-    LOG("read  address: %x\n", addr);
-    LOG("tag: %x\n", tag);
-    LOG("idx: %x\n", idx);
+    LOG("\nREAD  address: %x\n", addr);
 
     c->total_cycles += ACCESS_CYCLES;
 
     // 1. check set for match
-    CacheBlock* base = (CacheBlock*) c->blocks + (idx * c->assoc);
-    CacheBlock* victim = base; // way to be updated
-    uint32_t lru_t = UINT_MAX;
+    int hit;
+    CacheBlock* victim = cache_get_block(c, addr, &hit);
 
-    for (uint32_t j = 0; j < c->assoc; ++j) {
-        CacheBlock* curr = base + j;
-        LOG("%d,%d: tag: %x  state: %d\n", idx, j, curr->tag, curr->state);
-        if (curr->tag == tag && curr->state) {
-            // cache hit
-            LOG("wow cache hit\n");
-            has_match = 1;
-            victim = curr;
-            if (victim->state == ST_S) {
-                ++c->s_hits; 
-            } else {
-                ++c->p_hits;
-            }
-            break;
+    // 2. handle hit/miss
+    if (hit) {
+        if (victim->state == ST_S) {
+            ++c->s_hits; 
+        } else {
+            ++c->p_hits;
         }
-
-        // track lru way; free lines (state 0: empty or invalidated by coherence)
-        // count as oldest, so they are filled before evicting a valid line
-        uint32_t ts = curr->state ? curr->t_used : 0;
-        if (ts < lru_t) {
-            lru_t = ts;
-            victim = curr;
-        }
-    }
-
-    // 2. (if no match) evict/load block
-    if (!has_match) {
-        LOG("oh no cache miss\n");
+    } else { // miss
         ++c->misses;
 
         if (victim->state == ST_M) {
@@ -114,8 +91,6 @@ void cache_pr_rd (Cache* c, Bus* b, uint32_t addr) {
         victim->state = bus_rd(c, b, addr);
     }
 
-    LOG("way: %ld\n\n", victim - base); 
-
     // 3. update t
     victim->t_used = c->t_next;
     ++c->t_next;
@@ -123,63 +98,37 @@ void cache_pr_rd (Cache* c, Bus* b, uint32_t addr) {
 
 // instruction 1 (write)
 void cache_pr_wr (Cache* c, Bus* b, uint32_t addr) {
-    int has_match = 0;
     uint32_t tag = addr >> c->idx_off_bits;
-    uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
+    // uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
 
-    LOG("write address: %x\n", addr);
-    LOG("tag: %x\n", tag);
-    LOG("idx: %x\n", idx);
+    LOG("\nWRITE address: %x\n", addr);
 
     c->total_cycles += ACCESS_CYCLES;
 
     // 1. check set for match
-    CacheBlock* base = (CacheBlock*) c->blocks + (idx * c->assoc);
-    CacheBlock* victim = base; // way to be updated
-    uint32_t lru_t = UINT_MAX;
+    int hit;
+    CacheBlock* victim = cache_get_block(c, addr, &hit);
 
-    for (uint32_t j = 0; j < c->assoc; ++j) {
-        CacheBlock* curr = base + j;
-        LOG("%d,%d: tag: %x  state: %d\n", idx, j, curr->tag, curr->state);
-        if (curr->tag == tag && curr->state) {
-            // cache hit
-            LOG("wow cache hit\n");
-            has_match = 1;
-            victim = curr;
-            if (victim->state == ST_S) {
-                ++c->s_hits; 
-                bus_rdx(c, b, addr);       // S -> M: invalidate others (BusRdX)
-            } else {
-                ++c->p_hits;
-            }
-            break;
+    // 2. handle hit/miss
+    if (hit) {
+        if (victim->state == ST_S) {
+            ++c->s_hits; 
+            bus_rdx(c, b, addr); // S -> M: invalidate others (BusRdX)
+        } else {
+            ++c->p_hits;
         }
-
-        // track lru way; free lines (state 0: empty or invalidated by coherence)
-        // count as oldest, so they are filled before evicting a valid line
-        uint32_t ts = curr->state ? curr->t_used : 0;
-        if (ts < lru_t) {
-            lru_t = ts;
-            victim = curr;
-        }
-    }
-
-    // 2. (if no match) evict/load block
-    if (!has_match) {
-        LOG("oh no cache miss\n");
+    } else { // miss
         ++c->misses;
 
         // if block is dirty 
         if (victim->state == ST_M) {
             bus_flush_mem(c, b);
         }
-        
+
         // LOAD new block
         bus_rdx(c, b, addr);
         victim->tag = tag;
     }
-
-    LOG("way: %ld\n\n", victim - base); 
 
     // 3. for store instructions: update state to dirty
     victim->state = ST_M;
@@ -192,6 +141,7 @@ void cache_pr_wr (Cache* c, Bus* b, uint32_t addr) {
 // BusRd:  E/S/M -> S   (M flushes; memory picks it up too)
 // returns 1 if sends data, 0 otherwise
 int cache_bus_rd(Cache* c, uint32_t addr) {
+    LOG("\nbus_read\n");
     CacheBlock* block = cache_find(c, addr);
     if (block == NULL) {
         return 0;
@@ -203,6 +153,7 @@ int cache_bus_rd(Cache* c, uint32_t addr) {
 // BusRdX: E/S/M -> I   (int exclusive flag to indicate BusRdX)
 // returns 1 if sends (and flushes) data, 0 otherwise
 int cache_bus_rdx(Cache* c, uint32_t addr) {
+    LOG("\nbus_rdx\n");
     CacheBlock* block = cache_find(c, addr);
     if (block == NULL) {
         return 0;
@@ -211,24 +162,52 @@ int cache_bus_rdx(Cache* c, uint32_t addr) {
     return 1;
 }
 
-
 // check if cache contains a certain address
-// returns cache block
-static CacheBlock* cache_find(Cache* c, uint32_t addr) {
+// returns cache block on hit, victim block on miss
+static CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
     uint32_t tag = addr >> c->idx_off_bits;
     uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
+
     CacheBlock* base = (CacheBlock*) c->blocks + (idx * c->assoc);
+    CacheBlock* victim = base; // way to be updated
+    uint32_t lru_t = UINT_MAX;
+
     for (uint32_t j = 0; j < c->assoc; ++j) {
         CacheBlock* curr = base + j;
+        LOG("%d,%d: tag: %x  state: %d\n", idx, j, curr->tag, curr->state);
         if (curr->tag == tag && curr->state) {
+            // cache hit
+            LOG("wow cache hit\n");
+            *hit = 1;
             return curr;
         }
+
+        // track lru way; free lines (state 0: empty or invalidated by coherence)
+        // count as oldest, so they are filled before evicting a valid line
+        uint32_t ts = curr->state ? curr->t_used : 0;
+        if (ts < lru_t) {
+            lru_t = ts;
+            victim = curr;
+        }
     }
-    return NULL;
+
+    LOG("oh no cache miss\n");
+    *hit = 0;
+    return victim;
+}
+
+
+// check if cache contains a certain address
+// returns cache block on hit, NULL on miss
+static CacheBlock* cache_find(Cache* c, uint32_t addr) {
+    int hit;
+    CacheBlock* block = cache_get_block(c, addr, &hit);
+    return hit ? block : NULL;
 }
 
 // returns 1 if a miss, or a write to a cache line with state S
 int cache_needs_bus(Cache* c, uint32_t addr, int is_write) {
+    LOG("\ncache_needs_bus check\n");
     CacheBlock* block = cache_find(c, addr);
     if (block == NULL) {
         return 1;
