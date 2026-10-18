@@ -5,6 +5,12 @@
 
 typedef struct Bus Bus;
 
+typedef struct CacheBlock {
+    uint32_t tag;
+    uint32_t state;
+    uint32_t t_used;
+} CacheBlock;
+
 typedef struct Cache {
     // cache info
     uint32_t num_sets;
@@ -19,9 +25,7 @@ typedef struct Cache {
 
     // entries
     uint32_t t_next;
-    uint32_t* tags;
-    uint32_t* states;
-    uint32_t* ts_used;
+    uint32_t* blocks;
 
     // stats
     uint64_t total_cycles;
@@ -41,7 +45,6 @@ void cache_pr_wr(Cache* c, Bus* b, uint32_t addr);
 int cache_bus_rd(Cache* c, uint32_t addr);
 int cache_bus_rdx(Cache* c, uint32_t addr);
 
-int cache_find(Cache* c, uint32_t addr);
 int cache_needs_bus(Cache* c, uint32_t addr, int is_write);
 
 #endif
