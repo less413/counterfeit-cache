@@ -37,14 +37,25 @@ static uint64_t c2c_cycles(Cache* c) {
 // BusRd for a read miss. Returns the requester's new state: S if shared, else E.
 uint32_t bus_rd(Cache* c, Bus* b, uint32_t addr) {
     int shared = 0;
+    int dirty = 0;
     for (int j = 0; j < NUM_CORES; ++j) {
         Cache* o = b->caches[j];
         if (o == c) { // skip the requester
             continue;
         }
-        shared |= cache_bus_rd(o, addr);
+        int old = cache_bus_rd(o, addr);
+        shared |= (old != ST_I);
+        dirty |= (old == ST_M);
     }
-    c->total_cycles += shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
+    uint64_t cycles;
+    if (dirty) {
+        // M owner flushes once; requester (2N) and memory (100) receive it together
+        uint64_t c2c = c2c_cycles(c);
+        cycles = c2c > FLUSH_MEM_CYCLES ? c2c : FLUSH_MEM_CYCLES;
+    } else {
+        cycles = shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
+    }
+    c->total_cycles += cycles;
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
     return shared ? ST_S : ST_E;

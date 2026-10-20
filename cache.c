@@ -193,14 +193,15 @@ void cache_pr_wr (Cache* c, Bus* b, uint32_t addr) {
 }
 
 // BusRd:  E/S/M -> S   (M flushes; memory picks it up too)
-// returns 1 if sends data, 0 otherwise
+// returns the state before the snoop (ST_I if not present)
 int cache_bus_rd(Cache* c, uint32_t addr) {
     int arr_i = cache_find(c, addr);
     if (arr_i < 0) {
-        return 0;
+        return ST_I;
     }
+    int old = c->states[arr_i];
     c->states[arr_i] = ST_S;
-    return 1;
+    return old;
 }
 
 // BusRdX: E/S/M -> I   (int exclusive flag to indicate BusRdX)
