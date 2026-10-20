@@ -204,15 +204,16 @@ int cache_bus_rd(Cache* c, uint32_t addr) {
     return old;
 }
 
-// BusRdX: E/S/M -> I   (int exclusive flag to indicate BusRdX)
-// returns 1 if sends (and flushes) data, 0 otherwise
+// BusRdX: E/S/M -> I   (M flushes; memory picks it up too)
+// returns the state before the snoop (ST_I if not present)
 int cache_bus_rdx(Cache* c, uint32_t addr) {
     int arr_i = cache_find(c, addr);
     if (arr_i < 0) {
-        return 0;
+        return ST_I;
     }
+    int old = c->states[arr_i];
     c->states[arr_i] = ST_I;
-    return 1;
+    return old;
 }
 
 
