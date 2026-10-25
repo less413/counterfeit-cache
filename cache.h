@@ -39,12 +39,8 @@ Cache* cache_create(uint32_t cache_size, uint32_t assoc, uint32_t block_size);
 void cache_free(Cache* c);
 
 void comp(Cache* c, uint32_t cycles);
-void cache_pr_rd(Cache* c, Bus* b, uint32_t addr);
-void cache_pr_wr(Cache* c, Bus* b, uint32_t addr);
 
-int cache_bus_rd(Cache* c, uint32_t addr);
-int cache_bus_rdx(Cache* c, uint32_t addr);
-
-int cache_needs_bus(Cache* c, uint32_t addr, int is_write);
+CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit);
+CacheBlock* cache_find(Cache* c, uint32_t addr);
 
 #endif

@@ -19,7 +19,6 @@ struct Bus {
 Bus* bus_create(Cache** caches);
 void bus_free(Bus* b);
 void bus_flush_mem(Cache* c, Bus* b);
-uint32_t bus_rd(Cache* c, Bus* b, uint32_t addr);
-void bus_rdx(Cache* c, Bus* b, uint32_t addr);
+uint64_t c2c_cycles(Cache* c);
 
 #endif

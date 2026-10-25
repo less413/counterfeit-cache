@@ -10,6 +10,7 @@
 #include "cache.h"
 #include "bus.h"
 #include "parse.h"
+#include "mesi.h"
 
 typedef struct {
     int valid;
@@ -167,7 +168,7 @@ int main(int ac, char** av) {
             // load (0) or store (1)
             // need to first check if it needs the bus and whether bus is busy
             uint64_t t_req = curr_cache->total_cycles + ACCESS_CYCLES;   // request after 1-cycle tag check
-            if (cache_needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
+            if (mesi_cache_needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
                 if (!next[idx].waiting) {
                     next[idx].waiting = 1;
                     next[idx].bus_req_time = best_bus_req_time;      // remember FIRST request time only
@@ -180,9 +181,9 @@ int main(int ac, char** av) {
 
             mem_instrs[idx]++;
             if (inst == 0) {
-                cache_pr_rd(curr_cache, bus, val);
+                mesi_cache_pr_rd(curr_cache, bus, val);
             } else {
-                cache_pr_wr(curr_cache, bus, val);
+                mesi_cache_pr_wr(curr_cache, bus, val);
             }
         }
 
