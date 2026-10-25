@@ -12,6 +12,9 @@
 #include "parse.h"
 #include "protocol.h"
 #include "mesi.h"
+#include "dragon.h"
+
+#define MAX_PROTOCOL_NAME_LEN 16
 
 typedef struct {
     int valid;
@@ -69,7 +72,18 @@ int main(int ac, char** av) {
     fprintf(stderr, "block_size: %d\n", block_size); // assume: block_size is a power of 2
     fprintf(stderr, "\n");
 
-    char* filename = malloc(strlen(input_file) + 8); // <bench_name>_<i>.data'\0'
+    // decide protocol to use
+    const Protocol* proto;
+    if (!strncasecmp(protocol_name, "MESI", MAX_PROTOCOL_NAME_LEN)) {
+        proto = &MESI_PROTOCOL;
+    } else if (!strncasecmp(protocol_name, "Dragon", MAX_PROTOCOL_NAME_LEN)) {
+        proto = &DRAGON_PROTOCOL;
+    } else {
+        fprintf(stderr, "ERROR: unknown protocol %s\n", protocol_name);
+        return -1;
+    }
+    
+    char* filename = malloc(strnlen(input_file, MAX_PROTOCOL_NAME_LEN) + 8); // <bench_name>_<i>.data'\0'
 
     // open file/s
     int fds[NUM_CORES];
@@ -122,11 +136,6 @@ int main(int ac, char** av) {
         next[i].waiting = 0;
         next[i].bus_req_time = 0;
     }
-
-    const Protocol* proto;
-    // decide protocol to use
-    // TODO make it based on first arg
-    proto = &MESI_PROTOCOL;
 
     // notes: issue_time just use cache[idx]->total_cycles;
     // no need to explicitly update issue_time, the functions does it
