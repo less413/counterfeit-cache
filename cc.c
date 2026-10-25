@@ -10,6 +10,7 @@
 #include "cache.h"
 #include "bus.h"
 #include "parse.h"
+#include "protocol.h"
 #include "mesi.h"
 
 typedef struct {
@@ -36,7 +37,7 @@ int main(int ac, char** av) {
         return -1;
     }
 
-    char* protocol = av[1];
+    char* protocol_name = av[1];
     char* input_file = av[2];
     uint32_t cache_size = 4096;
     uint32_t associativity = 2;
@@ -61,7 +62,7 @@ int main(int ac, char** av) {
     }
 
     fprintf(stderr, "\n");
-    fprintf(stderr, "protocol: %s\n", protocol);
+    fprintf(stderr, "protocol: %s\n", protocol_name);
     fprintf(stderr, "input_file: %s\n", input_file);
     fprintf(stderr, "cache_size: %d\n", cache_size);
     fprintf(stderr, "associativity: %d\n", associativity);
@@ -122,6 +123,11 @@ int main(int ac, char** av) {
         next[i].bus_req_time = 0;
     }
 
+    const Protocol* proto;
+    // decide protocol to use
+    // TODO make it based on first arg
+    proto = &MESI_PROTOCOL;
+
     // notes: issue_time just use cache[idx]->total_cycles;
     // no need to explicitly update issue_time, the functions does it
     while (1) {
@@ -168,7 +174,7 @@ int main(int ac, char** av) {
             // load (0) or store (1)
             // need to first check if it needs the bus and whether bus is busy
             uint64_t t_req = curr_cache->total_cycles + ACCESS_CYCLES;   // request after 1-cycle tag check
-            if (mesi_cache_needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
+            if (proto->needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
                 if (!next[idx].waiting) {
                     next[idx].waiting = 1;
                     next[idx].bus_req_time = best_bus_req_time;      // remember FIRST request time only
@@ -181,9 +187,9 @@ int main(int ac, char** av) {
 
             mem_instrs[idx]++;
             if (inst == 0) {
-                mesi_cache_pr_rd(curr_cache, bus, val);
+                proto->pr_rd(curr_cache, bus, val);
             } else {
-                mesi_cache_pr_wr(curr_cache, bus, val);
+                proto->pr_wr(curr_cache, bus, val);
             }
         }
 
