@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 #include "cc.h"
 #include "cache.h"
 
@@ -55,45 +54,3 @@ void comp(Cache* c, uint32_t cycles) {
     c->comp_cycles += cycles;
 }
 
-// check if cache contains a certain address
-// returns cache block on hit, victim block on miss
-CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
-    uint32_t tag = addr >> c->idx_off_bits;
-    uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
-
-    CacheBlock* base = (CacheBlock*) c->blocks + (idx * c->assoc);
-    CacheBlock* victim = base; // way to be updated
-    uint32_t lru_t = UINT_MAX;
-
-    for (uint32_t j = 0; j < c->assoc; ++j) {
-        CacheBlock* curr = base + j;
-        LOG("%d,%d: tag: %x  state: %d\n", idx, j, curr->tag, curr->state);
-        if (curr->tag == tag && curr->state) {
-            // cache hit
-            LOG("wow cache hit\n");
-            *hit = 1;
-            return curr;
-        }
-
-        // track lru way; free lines (state 0: empty or invalidated by coherence)
-        // count as oldest, so they are filled before evicting a valid line
-        uint32_t ts = curr->state ? curr->t_used : 0;
-        if (ts < lru_t) {
-            lru_t = ts;
-            victim = curr;
-        }
-    }
-
-    LOG("oh no cache miss\n");
-    *hit = 0;
-    return victim;
-}
-
-
-// check if cache contains a certain address
-// returns cache block on hit, NULL on miss
-CacheBlock* cache_find(Cache* c, uint32_t addr) {
-    int hit;
-    CacheBlock* block = cache_get_block(c, addr, &hit);
-    return hit ? block : NULL;
-}
