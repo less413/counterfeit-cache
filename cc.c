@@ -10,6 +10,11 @@
 #include "cache.h"
 #include "bus.h"
 #include "parse.h"
+#include "protocol.h"
+#include "mesi.h"
+#include "dragon.h"
+
+#define MAX_PROTOCOL_NAME_LEN 16
 
 typedef struct {
     int valid;
@@ -35,7 +40,7 @@ int main(int ac, char** av) {
         return -1;
     }
 
-    char* protocol = av[1];
+    char* protocol_name = av[1];
     char* input_file = av[2];
     uint32_t cache_size = 4096;
     uint32_t associativity = 2;
@@ -60,14 +65,25 @@ int main(int ac, char** av) {
     }
 
     fprintf(stderr, "\n");
-    fprintf(stderr, "protocol: %s\n", protocol);
+    fprintf(stderr, "protocol: %s\n", protocol_name);
     fprintf(stderr, "input_file: %s\n", input_file);
     fprintf(stderr, "cache_size: %d\n", cache_size);
     fprintf(stderr, "associativity: %d\n", associativity);
     fprintf(stderr, "block_size: %d\n", block_size); // assume: block_size is a power of 2
     fprintf(stderr, "\n");
 
-    char* filename = malloc(strlen(input_file) + 8); // <bench_name>_<i>.data'\0'
+    // decide protocol to use
+    const Protocol* proto;
+    if (!strncasecmp(protocol_name, "MESI", MAX_PROTOCOL_NAME_LEN)) {
+        proto = &MESI_PROTOCOL;
+    } else if (!strncasecmp(protocol_name, "Dragon", MAX_PROTOCOL_NAME_LEN)) {
+        proto = &DRAGON_PROTOCOL;
+    } else {
+        fprintf(stderr, "ERROR: unknown protocol %s\n", protocol_name);
+        return -1;
+    }
+    
+    char* filename = malloc(strnlen(input_file, MAX_PROTOCOL_NAME_LEN) + 8); // <bench_name>_<i>.data'\0'
 
     // open file/s
     int fds[NUM_CORES];
@@ -167,7 +183,7 @@ int main(int ac, char** av) {
             // load (0) or store (1)
             // need to first check if it needs the bus and whether bus is busy
             uint64_t t_req = curr_cache->total_cycles + ACCESS_CYCLES;   // request after 1-cycle tag check
-            if (cache_needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
+            if (proto->needs_bus(curr_cache, val, inst == 1) && t_req < bus->t_free) {
                 if (!next[idx].waiting) {
                     next[idx].waiting = 1;
                     next[idx].bus_req_time = best_bus_req_time;      // remember FIRST request time only
@@ -180,9 +196,9 @@ int main(int ac, char** av) {
 
             mem_instrs[idx]++;
             if (inst == 0) {
-                cache_pr_rd(curr_cache, bus, val);
+                proto->pr_rd(curr_cache, bus, val);
             } else {
-                cache_pr_wr(curr_cache, bus, val);
+                proto->pr_wr(curr_cache, bus, val);
             }
         }
 
