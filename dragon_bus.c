@@ -7,14 +7,7 @@
 
 // #cycles to supply the block
 static uint64_t dragon_supply_cycles(Cache* c, int shared, int dirty) {
-    if (dirty) {
-        // M/Sm owner flushes once; requester (2N) and memory (100) receive it together
-        // costs max(2N, 100) cycles. (VERY important assumption)
-        uint64_t c2c = c2c_cycles(c);
-        return c2c > FLUSH_MEM_CYCLES ? c2c : FLUSH_MEM_CYCLES;
-    }
-    // since no one has dirty copy, then...
-    // if theres a (clean copy), obtain it via c2c, otherwise mem.
+    // if theres a copy, obtain it via c2c, otherwise mem.
     // (VERY important assumption)
     return shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
 }

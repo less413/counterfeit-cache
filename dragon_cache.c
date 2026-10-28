@@ -119,7 +119,6 @@ int dragon_cache_bus_rd(Cache* c, uint32_t addr) {
 }
 
 // returns state before snoop, or D_I if absent
-// return value seems useless, might change it to return void
 int dragon_cache_bus_upd(Cache* c, uint32_t addr) {
     LOG("\nbus_update\n");
     CacheBlock* block = cache_find(c, addr);
