@@ -43,6 +43,7 @@ void comp(Cache* c, uint32_t cycles);
 
 // check if cache contains a certain address
 // returns cache block on hit, LRU victim block on miss
+// invalid blocks are considered misses
 inline CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
     uint32_t tag = addr >> c->idx_off_bits;
     uint32_t idx = (addr >> c->off_bits) & c->idx_ones;
@@ -77,6 +78,7 @@ inline CacheBlock* cache_get_block(Cache* c, uint32_t addr, int* hit) {
 
 // check if cache contains a certain address
 // returns cache block on hit, NULL on miss
+// invalid blocks are considered misses
 inline CacheBlock* cache_find(Cache* c, uint32_t addr) {
     int hit;
     CacheBlock* block = cache_get_block(c, addr, &hit);
