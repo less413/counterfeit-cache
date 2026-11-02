@@ -9,7 +9,7 @@
 static uint64_t dragon_supply_cycles(Cache* c, int shared, int dirty) {
     // if theres a copy, obtain it via c2c, otherwise mem.
     // (VERY important assumption)
-    return shared ? c2c_cycles(c) : LOAD_MEM_CYCLES;
+    return dirty ? c2c_cycles(c) : LOAD_MEM_CYCLES;
 }
 
 // updates other E/M copies to Sc/Sm state
