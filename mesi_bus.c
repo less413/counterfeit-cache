@@ -5,7 +5,6 @@
 #include "bus.h"
 #include "mesi.h"
 
-// #cycles to supply the block: memory, another cache, or a flush from an M owner
 static uint64_t mesi_supply_cycles(Cache* c, int shared, int dirty) {
     if (dirty) {
         // M owner flushes once; requester (2N) and memory (100) receive it together

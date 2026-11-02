@@ -7,8 +7,7 @@
 
 // #cycles to supply the block
 static uint64_t dragon_supply_cycles(Cache* c, int shared, int dirty) {
-    // if theres a copy, obtain it via c2c, otherwise mem.
-    // (VERY important assumption)
+    // only M/Sm supplies cache-to-cache, while E/Sc don't
     return dirty ? c2c_cycles(c) : LOAD_MEM_CYCLES;
 }
 
