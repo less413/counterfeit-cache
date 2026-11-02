@@ -83,7 +83,7 @@ int main(int ac, char** av) {
         return -1;
     }
     
-    char* filename = malloc(strnlen(input_file, MAX_PROTOCOL_NAME_LEN) + 8); // <bench_name>_<i>.data'\0'
+    char* filename = malloc(strlen(input_file) + 8); // <bench_name>_<i>.data'\0'
 
     // open file/s
     int fds[NUM_CORES];
