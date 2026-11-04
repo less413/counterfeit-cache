@@ -1,4 +1,4 @@
-#ifndef MESIFi_H
+#ifndef MESIF_H
 #define MESIF_H
 
 #include <stdint.h>
