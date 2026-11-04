@@ -20,7 +20,7 @@ void mesif_cache_pr_rd(Cache* c, Bus* b, uint32_t addr) {
 
     // 2. handle hit/miss
     if (hit) {
-        if (victim->state == MESIF_S) {
+        if (victim->state == MESIF_S || victim->state == MESIF_F) {
             ++c->s_hits; 
         } else {
             ++c->p_hits;
@@ -57,7 +57,7 @@ void mesif_cache_pr_wr(Cache* c, Bus* b, uint32_t addr) {
 
     // 2. handle hit/miss
     if (hit) {
-        if (victim->state == MESIF_S) {
+        if (victim->state == MESIF_S || victim->state == MESIF_F) {
             ++c->s_hits; 
             mesif_bus_rdx(c, b, addr); // S -> M: invalidate others (BusRdX)
         } else {
@@ -84,7 +84,17 @@ void mesif_cache_pr_wr(Cache* c, Bus* b, uint32_t addr) {
     ++c->t_next;
 }
 
-// BusRd:  E/S/M -> S   (M flushes; memory picks it up too)
+// returns 1 if a miss, or a write to a cache line with state S/F
+int mesif_cache_needs_bus(Cache* c, uint32_t addr, int is_write) {
+    LOG("\ncache_needs_bus check\n");
+    CacheBlock* block = cache_find(c, addr);
+    if (block == NULL) {
+        return 1;
+    }
+    return is_write && (block->state == MESIF_S || block->state == MESIF_F);
+}
+
+// BusRd:  E/S/M/F -> S   (M flushes; memory picks it up too)
 // returns the state before the snoop (MESIF_I if not present)
 int mesif_cache_bus_rd(Cache* c, uint32_t addr) {
     LOG("\nbus_read\n");
@@ -97,7 +107,7 @@ int mesif_cache_bus_rd(Cache* c, uint32_t addr) {
     return old;
 }
 
-// BusRdX: E/S/M -> I   (M flushes; memory picks it up too)
+// BusRdX: E/S/M/F -> I   (M flushes; memory picks it up too)
 // returns the state before the snoop (MESIF_I if not present)
 int mesif_cache_bus_rdx(Cache* c, uint32_t addr) {
     LOG("\nbus_rdx\n");
@@ -109,15 +119,4 @@ int mesif_cache_bus_rdx(Cache* c, uint32_t addr) {
     block->state = MESIF_I;
     return old;
 }
-
-// returns 1 if a miss, or a write to a cache line with state S
-int mesif_cache_needs_bus(Cache* c, uint32_t addr, int is_write) {
-    LOG("\ncache_needs_bus check\n");
-    CacheBlock* block = cache_find(c, addr);
-    if (block == NULL) {
-        return 1;
-    }
-    return is_write && block->state == MESIF_S;
-}
-
 
