@@ -13,6 +13,7 @@
 #include "protocol.h"
 #include "mesi.h"
 #include "dragon.h"
+#include "mesif.h"
 
 #define MAX_PROTOCOL_NAME_LEN 16
 
@@ -78,6 +79,8 @@ int main(int ac, char** av) {
         proto = &MESI_PROTOCOL;
     } else if (!strncasecmp(protocol_name, "Dragon", MAX_PROTOCOL_NAME_LEN)) {
         proto = &DRAGON_PROTOCOL;
+    } else if (!strncasecmp(protocol_name, "MESIF", MAX_PROTOCOL_NAME_LEN)) {
+        proto = &MESIF_PROTOCOL;
     } else {
         fprintf(stderr, "ERROR: unknown protocol %s\n", protocol_name);
         return -1;
