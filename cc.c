@@ -37,7 +37,7 @@ static void print_pair_row(const uint64_t* a, const uint64_t* b) {
 
 int main(int ac, char** av) {
     if (ac < 3 || ac > 6) {
-        fprintf(stderr, "\nUsage: %s <protocol> <input_file> [<cache_size> [<associativity> [<block_size>]]]\n\n", av[0]);
+        fprintf(stderr, "\nUsage: %s <protocol> <input_file> [<cache_size>] [<associativity>] [<block_size>]\n\n", av[0]);
         return -1;
     }
 

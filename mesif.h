@@ -26,4 +26,3 @@ static const Protocol MESIF_PROTOCOL = {mesif_cache_pr_rd, mesif_cache_pr_wr, me
 
 #endif
 
-

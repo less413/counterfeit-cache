@@ -59,7 +59,7 @@ void mesif_cache_pr_wr(Cache* c, Bus* b, uint32_t addr) {
     if (hit) {
         if (victim->state == MESIF_S || victim->state == MESIF_F) {
             ++c->s_hits; 
-            mesif_bus_rdx(c, b, addr); // S -> M: invalidate others (BusRdX)
+            mesif_bus_rdx(c, b, addr); // S/F -> M: invalidate others (BusRdX)
         } else {
             ++c->p_hits;
         }
