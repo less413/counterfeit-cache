@@ -39,7 +39,12 @@ typedef struct Cache {
 Cache* cache_create(uint32_t cache_size, uint32_t assoc, uint32_t block_size);
 void cache_free(Cache* c);
 
-void comp(Cache* c, uint32_t cycles);
+// instruction 2 (compute)
+static inline void comp(Cache* c, uint32_t cycles) {
+    c->total_cycles += cycles;
+    c->comp_cycles += cycles;
+}
+
 
 // check if cache contains a certain address
 // returns cache block on hit, LRU victim block on miss

@@ -48,9 +48,3 @@ void cache_free(Cache* c) {
     free(c);
 }
 
-// instruction 2 (compute)
-void comp(Cache* c, uint32_t cycles) {
-    c->total_cycles += cycles;
-    c->comp_cycles += cycles;
-}
-
