@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -g -Wall -Wextra -pedantic -O2
+CFLAGS := -g -Wall -Wextra -pedantic -O3
 
 SRCS := *.c
 HDRS := *.h
