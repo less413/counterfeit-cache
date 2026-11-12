@@ -6,7 +6,7 @@
 #include "dragon.h"
 
 // #cycles to supply the block
-static uint64_t dragon_supply_cycles(Cache* c, int shared, int dirty) {
+static uint64_t dragon_supply_cycles(Cache* c, int dirty) {
     // only M/Sm supplies cache-to-cache, while E/Sc don't
     return dirty ? c2c_cycles(c) : LOAD_MEM_CYCLES;
 }
@@ -26,7 +26,7 @@ int dragon_bus_rd(Cache *c, Bus *b, uint32_t addr) {
     // if shared != 0, means there is shared copy elsewhere
     // if (shared & 2) != 0, means there is a dirty copy elsewhere
     int dirty = shared & 2;
-    c->total_cycles += dragon_supply_cycles(c, shared, dirty);
+    c->total_cycles += dragon_supply_cycles(c, dirty);
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
     return shared != 0;

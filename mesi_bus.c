@@ -5,7 +5,7 @@
 #include "bus.h"
 #include "mesi.h"
 
-static uint64_t mesi_supply_cycles(Cache* c, int shared, int dirty) {
+static uint64_t mesi_supply_cycles(Cache* c, int dirty) {
     if (dirty) {
         // M owner flushes once; requester (2N) and memory (100) receive it together
         uint64_t c2c = c2c_cycles(c);
@@ -28,7 +28,7 @@ uint32_t mesi_bus_rd(Cache* c, Bus* b, uint32_t addr) {
         shared |= (old != ST_I);
         dirty |= (old == ST_M);
     }
-    c->total_cycles += mesi_supply_cycles(c, shared, dirty);
+    c->total_cycles += mesi_supply_cycles(c, dirty);
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
     return shared ? ST_S : ST_E;
@@ -48,7 +48,7 @@ void mesi_bus_rdx(Cache* c, Bus* b, uint32_t addr) {
         dirty |= (old == ST_M);
     }
     if (shared) ++b->invalidations;            // 1 per transaction
-    c->total_cycles += mesi_supply_cycles(c, shared, dirty);
+    c->total_cycles += mesi_supply_cycles(c, dirty);
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
 }

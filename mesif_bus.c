@@ -5,7 +5,7 @@
 #include "bus.h"
 #include "mesif.h"
 
-static uint64_t mesif_supply_cycles(Cache* c, int shared, int dirty, int forwarded) {
+static uint64_t mesif_supply_cycles(Cache* c, int dirty, int forwarded) {
     if (dirty) {
         // M owner flushes once; requester (2N) and memory (100) receive it together
         uint64_t c2c = c2c_cycles(c);
@@ -34,7 +34,7 @@ uint32_t mesif_bus_rd(Cache* c, Bus* b, uint32_t addr) {
         dirty |= (old == MESIF_M);
         forwarded |= (old == MESIF_F);
     }
-    c->total_cycles += mesif_supply_cycles(c, shared, dirty, forwarded);
+    c->total_cycles += mesif_supply_cycles(c, dirty, forwarded);
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
     return shared ? MESIF_F : MESIF_E;
@@ -56,7 +56,7 @@ void mesif_bus_rdx(Cache* c, Bus* b, uint32_t addr) {
         forwarded |= (old == MESIF_F);
     }
     if (shared) ++b->invalidations;            // 1 per transaction
-    c->total_cycles += mesif_supply_cycles(c, shared, dirty, forwarded);
+    c->total_cycles += mesif_supply_cycles(c, dirty, forwarded);
     b->data_traffic += c->block_size;
     b->t_free = c->total_cycles;
 }
